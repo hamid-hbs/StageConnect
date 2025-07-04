@@ -288,8 +288,7 @@ const displayToast = (message, type = 'success') => {
 onMounted(async () => {
   try {
     isLoadingProfile.value = true;
-    const baseURL = `${import.meta.env.VITE_API_URL}/storage/`;
-
+    
 
     // Chargement des listes pour le modal d'édition AVANT de charger le profil
     // afin que les données de référence soient disponibles.
@@ -314,8 +313,8 @@ onMounted(async () => {
     const user = userResponse.data;
 
     if (user.role === 'etudiant' && user.role_details) {
-      photo.value = user.photo ? `${baseURL}${user.photo}` : '';
-      couverture.value = user.couverture ? `${baseURL}${user.couverture}` : '';
+      photo.value = user.photo ;
+      couverture.value = user.couverture ;
       description.value = user.description || 'Décrivez-vous ici...';
 
       const etudiantDetails = user.role_details;
@@ -385,7 +384,7 @@ const handleProfileUpload = async (event) => {
           'Content-Type': 'multipart/form-data'
         }
       });
-      const baseURL = `${import.meta.env.VITE_API_URL}/storage/`;
+      const baseURL = import.meta.env.VITE_API_URL;
       const newPhotoPath = response.data.photo_url || response.data;
       photo.value = `${baseURL}${newPhotoPath}?t=${Date.now()}`;
       displayToast('Photo de profil mise à jour avec succès !', 'success');
@@ -422,7 +421,7 @@ const handleCoverUpload = async (event) => {
           'Content-Type': 'multipart/form-data'
         }
       });
-      const baseURL = `${import.meta.env.VITE_API_URL}/storage/`;
+      const baseURL = import.meta.env.VITE_API_URL;
       const newCoverPath = response.data.couverture_url || response.data;
       couverture.value = `${baseURL}${newCoverPath}?t=${Date.now()}`;
       displayToast('Image de couverture mise à jour avec succès !', 'success');
@@ -610,13 +609,13 @@ const editProfile = async () => {
  */
 const reloadProfileData = async () => {
   try {
-    const baseURL = `${import.meta.env.VITE_API_URL}/storage/`;
+    
     const userResponse = await axios.get('/api/user/getProfile');
     const user = userResponse.data;
 
     if (user.role === 'etudiant' && user.role_details) {
-      photo.value = user.photo ? `${baseURL}${user.photo}` : '';
-      couverture.value = user.couverture ? `${baseURL}${user.couverture}` : '';
+      photo.value = user.photo ;
+      couverture.value = user.couverture ;
       description.value = user.description || 'Décrivez-vous ici...';
 
       const etudiantDetails = user.role_details;
