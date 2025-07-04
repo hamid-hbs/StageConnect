@@ -358,11 +358,11 @@ const showRefuseModal = (idCandidature) => {
   messageModal.currentCandidatureId = idCandidature;
   showMessage(
     'Refuser cette candidature',
-    'Veuillez indiquer un motif de refus (facultatif) :',
+    'Voulez-vous vraiment refuser cette candidature ? L\'étudiant sera notifié.',
     'danger', // Utilisation de 'warning' pour le style
     refuserCandidature, // La fonction callback
-    true, // Afficher un champ d'input
-    'Motif de refus',
+    false, // Afficher un champ d'input
+    '',
     'Refuser'
   );
 };

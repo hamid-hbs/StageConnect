@@ -12,9 +12,6 @@
         <router-link to="/accueil-user" class="nav-link">
           <i class="fas fa-home icon-spacing-navbar"></i> Accueil
         </router-link>
-        <!--<router-link to="/communaute" class="nav-link">
-          <i class="fas fa-users icon-spacing-navbar"></i> Communautés
-        </router-link>-->
         <router-link to="/etudiant-dashboard" class="nav-link">
           <img :src="displayedDashboardPhoto" class="user-logo"/> Vous
         </router-link>
@@ -69,7 +66,7 @@
 
 <script setup>
 import { useRouter } from 'vue-router';
-import { ref, computed, onMounted, provide } from 'vue'; // Importe 'provide'
+import { ref, computed, onMounted, onBeforeUnmount, provide } from 'vue'; // Ajout de onBeforeUnmount
 import axios from '../axios'; // Assurez-vous que le chemin est correct pour votre instance Axios
 
 const router = useRouter();
@@ -77,7 +74,11 @@ const router = useRouter();
 // --- Variables Réactives ---
 const photo = ref('');
 const isLoadingDashboard = ref(true);
-const unreadNotificationsCount = ref(0); // Nouvelle variable pour le compteur de notifications non lues
+const unreadNotificationsCount = ref(0); // Variable pour le compteur de notifications non lues
+
+// --- Polling Configuration pour les notifications ---
+let notificationPollingInterval = null;
+const NOTIFICATION_POLLING_INTERVAL_MS = 15000; // Poll toutes les 15 secondes (ajustez si besoin)
 
 // --- Propriété Calculée pour la Photo (avec cache busting) ---
 const displayedDashboardPhoto = computed(() => {
@@ -101,11 +102,30 @@ const fetchUnreadNotificationsCount = async () => {
     // L'URL DOIT correspondre à votre route Laravel exacte : GET /api/notifications/unread/count
     const response = await axios.get('/api/notifications/unread/count');
     // La réponse attendue est { "count": X }
-    unreadNotificationsCount.value = response.data.count;
-    console.log('Notifications non lues mises à jour:', unreadNotificationsCount.value);
+    if (unreadNotificationsCount.value !== response.data.count) {
+      unreadNotificationsCount.value = response.data.count;
+      console.log('Notifications non lues mises à jour:', unreadNotificationsCount.value);
+    }
   } catch (error) {
     console.error('Erreur lors du chargement du nombre de notifications non lues:', error.response ? error.response.data : error.message);
     unreadNotificationsCount.value = 0;
+  }
+};
+
+// --- Fonctions pour démarrer et arrêter le polling des notifications ---
+const startNotificationPolling = () => {
+  if (notificationPollingInterval) {
+    clearInterval(notificationPollingInterval);
+  }
+  console.log(`Démarrage du polling des notifications toutes les ${NOTIFICATION_POLLING_INTERVAL_MS / 1000} secondes.`);
+  notificationPollingInterval = setInterval(fetchUnreadNotificationsCount, NOTIFICATION_POLLING_INTERVAL_MS);
+};
+
+const stopNotificationPolling = () => {
+  if (notificationPollingInterval) {
+    console.log("Arrêt du polling des notifications.");
+    clearInterval(notificationPollingInterval);
+    notificationPollingInterval = null;
   }
 };
 
@@ -113,8 +133,7 @@ const fetchUnreadNotificationsCount = async () => {
 onMounted(async () => {
   try {
     isLoadingDashboard.value = true;
-     
-
+      
     const userResponse = await axios.get('/api/user/getProfile');
     const user = userResponse.data;
 
@@ -124,15 +143,20 @@ onMounted(async () => {
 
     // Appel initial pour obtenir le nombre de notifications non lues
     await fetchUnreadNotificationsCount();
-
-    // Optionnel : Rafraîchir le compteur périodiquement (par exemple, toutes les 60 secondes)
-    // setInterval(fetchUnreadNotificationsCount, 60000); 
+    
+    // Démarrer le polling des notifications après le chargement initial
+    startNotificationPolling();
 
   } catch (error) {
     console.error('Erreur lors du chargement initial:', error);
   } finally {
     isLoadingDashboard.value = false;
   }
+});
+
+onBeforeUnmount(() => {
+  // Arrêter le polling lors du démontage du composant
+  stopNotificationPolling();
 });
 
 // Exposer la fonction pour les composants enfants (notamment la page Notifications)

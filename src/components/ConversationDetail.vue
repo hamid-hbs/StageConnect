@@ -4,10 +4,10 @@
       <img :src="getProfilePhoto(headerParticipantData.photo)" :alt="headerParticipantData.name" class="rounded-circle object-fit-cover me-2" style="width: 40px; height: 40px;">
       <div>
         <h5 class="fw-semibold mb-0 text-dark">{{ headerParticipantData.name }}</h5>
-       <!-- <p class="text-muted mb-0 small d-flex align-items-center">
+        <p class="text-muted mb-0 small d-flex align-items-center">
           <span :class="{'rounded-circle me-1': true, 'bg-success': isUserOnline(headerParticipantData.id), 'bg-secondary': !isUserOnline(headerParticipantData.id)}" style="width: 8px; height: 8px;"></span>
           {{ isUserOnline(headerParticipantData.id) ? 'En ligne' : 'Hors ligne' }} 
-        </p> -->
+        </p>
       </div>
     </div>
   </div>
@@ -116,7 +116,7 @@ const sendingMessage = ref(false);
 const messageError = ref(null);
 const messagesContainer = ref(null);
 const isOtherUserTyping = ref(false);
-const onlineUsers = ref({});
+const onlineUsers = ref({}); // Maintenu pour la présence en ligne si vous utilisez encore Echo pour ça
 
 // NOUVEAU: Une ref pour stocker les données du participant à afficher dans l'en-tête
 const headerParticipantData = ref(null);
@@ -130,7 +130,34 @@ const participantFromList = computed(() => {
   return conversation ? conversation.participant : null;
 });
 
+// --- Polling Configuration ---
+let pollingInterval = null;
+const POLLING_INTERVAL_MS = 3000; // Poll toutes les 3 secondes (ajustez si besoin)
 
+// Fonction pour démarrer le polling
+const startPolling = () => {
+  // Arrêter tout polling précédent pour éviter les duplications
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+  }
+  if (props.userId) { // Ne démarrer le polling que si une conversation est sélectionnée
+    console.log(`Démarrage du polling pour les messages toutes les ${POLLING_INTERVAL_MS / 1000} secondes.`);
+    pollingInterval = setInterval(async () => {
+      await fetchConversationMessages(props.userId, true); // True pour indiquer que c'est un polling
+    }, POLLING_INTERVAL_MS);
+  }
+};
+
+// Fonction pour arrêter le polling
+const stopPolling = () => {
+  if (pollingInterval) {
+    console.log("Arrêt du polling des messages.");
+    clearInterval(pollingInterval);
+    pollingInterval = null;
+  }
+};
+
+// --- Gestion des canaux Laravel Echo (si vous les conservez pour la présence en ligne) ---
 const setupPresenceChannel = () => {
     if (window.Echo) {
         window.Echo.join('online-users')
@@ -140,14 +167,26 @@ const setupPresenceChannel = () => {
                 users.forEach(user => {
                     onlineUsers.value[user.id] = user;
                 });
+                // Mettre à jour le statut en ligne de l'interlocuteur si il est dans la liste des connectés
+                if (headerParticipantData.value) {
+                    headerParticipantData.value.is_online = isUserOnline(headerParticipantData.value.id);
+                }
             })
             .joining((user) => {
                 console.log('Utilisateur rejoint (JOINING - Detail):', user.name);
                 onlineUsers.value[user.id] = user;
+                // Si l'utilisateur qui rejoint est notre interlocuteur actuel
+                if (headerParticipantData.value && user.id === headerParticipantData.value.id) {
+                    headerParticipantData.value.is_online = true;
+                }
             })
             .leaving((user) => {
                 console.log('Utilisateur quitte (LEAVING - Detail):', user.name);
                 delete onlineUsers.value[user.id];
+                // Si l'utilisateur qui quitte est notre interlocuteur actuel
+                if (headerParticipantData.value && user.id === headerParticipantData.value.id) {
+                    headerParticipantData.value.is_online = false;
+                }
             })
             .error((error) => {
                 console.error('Erreur du canal de présence (Detail):', error);
@@ -163,53 +202,79 @@ const isUserOnline = (userId) => {
 
 
 // --- Fonctions de récupération et d'envoi ---
-const fetchConversationMessages = async (userId) => {
+// Ajout du paramètre `isPolling`
+const fetchConversationMessages = async (userId, isPolling = false) => {
   if (!userId) {
     messages.value = [];
-    headerParticipantData.value = null; // Réinitialise aussi la donnée de l'en-tête
+    headerParticipantData.value = null;
     loadingMessages.value = false;
+    stopPolling(); // Arrête le polling si plus de userId
     return;
   }
 
-  loadingMessages.value = true;
-  messageError.value = null;
-  messages.value = [];
+  // Ne montrer le loader que pour le chargement initial ou le changement de conversation
+  if (!isPolling) {
+    loadingMessages.value = true;
+    messageError.value = null;
+    messages.value = []; // Effacer les messages avant de charger les nouveaux
+  }
 
   // Tente d'abord de récupérer les infos du participant depuis la liste des conversations
   if (participantFromList.value) {
     headerParticipantData.value = participantFromList.value;
-  } else {
-    // Si pas trouvé dans la liste (nouvelle conversation ou liste pas encore chargée),
-    // fait un appel API pour obtenir les infos de base de l'utilisateur.
+    // Mettez à jour le statut en ligne de l'interlocuteur même si c'est un appel de polling
+    headerParticipantData.value.is_online = isUserOnline(participantFromList.value.id);
+  } else if (!isPolling) { // Ne le faire que lors du chargement initial, pas à chaque polling
     try {
         const userResponse = await axios.get(`/api/users/${userId}/profile`);
-        headerParticipantData.value = userResponse.data;
-        // IMPORTANT : La route `/api/users/{id}/profile` doit retourner 'id', 'name', ET 'photo'
-        // ainsi que toute autre information nécessaire comme 'role' ou 'is_online' si vous les utilisez.
-        // Sinon, getProfilePhoto et isUserOnline pourraient ne pas fonctionner comme prévu.
+        // Assurez-vous que la structure de headerParticipantData est cohérente
+        headerParticipantData.value = {
+          id: userResponse.data.id,
+          name: userResponse.data.name,
+          photo: userResponse.data.photo,
+          is_online: isUserOnline(userResponse.data.id) // Utilise l'état en ligne de la présence
+        };
     } catch (error) {
         console.error("Erreur lors de la récupération des infos du participant pour l'en-tête:", error);
-        headerParticipantData.value = null; // En cas d'erreur, ne pas afficher d'infos
+        headerParticipantData.value = null;
     }
   }
 
-
   try {
     const response = await axios.get(`/api/messages/conversation/${userId}`);
-    messages.value = response.data;
+    const newMessages = response.data; // Les nouveaux messages récupérés du serveur
 
-    const unreadMessages = messages.value.filter(msg => msg.expediteur_id !== props.currentUser.id && !msg.lu);
+    // Comparer les messages pour voir s'il y a des nouveaux ou des mises à jour (ex: lu)
+    const hasNewMessages = newMessages.length > messages.value.length;
+    const hasStatusChanged = newMessages.some(newMessage => {
+        const oldMessage = messages.value.find(m => m.id === newMessage.id);
+        return oldMessage && oldMessage.lu !== newMessage.lu;
+    });
+
+    messages.value = newMessages; // Met à jour tous les messages
+
+    // Filtrer les messages non lus qui ont été envoyés PAR l'autre utilisateur
+    const unreadMessages = messages.value.filter(msg => msg.expediteur_id === props.userId && !msg.lu);
     if (unreadMessages.length > 0) {
       await markMessagesAsRead(unreadMessages);
-      emit('messages-read');
+      emit('messages-read'); // Émet un événement pour que le parent mette à jour le nombre de messages non lus
+    }
+    // Émettez toujours 'conversation-updated' en cas de polling pour maintenir la liste à jour
+    // (par ex., pour les badges de non lus ou l'ordre des conversations).
+    emit('conversation-updated');
+
+    // Faire défiler vers le bas uniquement si de nouveaux messages sont arrivés
+    if (hasNewMessages || hasStatusChanged) {
+        nextTick(() => scrollToBottom());
     }
 
   } catch (error) {
     console.error("Erreur lors de la récupération des messages:", error);
     messageError.value = "Impossible de charger les messages pour cette conversation.";
   } finally {
-    loadingMessages.value = false;
-    nextTick(() => scrollToBottom());
+    if (!isPolling) { // Ne masquer le loader que si ce n'était pas un appel de polling
+      loadingMessages.value = false;
+    }
   }
 };
 
@@ -245,7 +310,7 @@ const sendMessage = async () => {
     messages.value.push({
       ...response.data.data,
       expediteur: props.currentUser,
-      destinataire: headerParticipantData.value, // Utilise la donnée de l'en-tête pour le destinataire du nouveau message
+      destinataire: headerParticipantData.value,
     });
 
     newMessageContent.value = '';
@@ -315,16 +380,26 @@ const adjustTextareaHeight = () => {
 
 // --- Watchers ---
 watch(() => props.userId, async (newUserId) => {
-  await fetchConversationMessages(newUserId);
+  await fetchConversationMessages(newUserId); // Appel initial
+  if (newUserId) {
+    startPolling(); // Démarrer le polling si une conversation est sélectionnée
+  } else {
+    stopPolling(); // Arrêter le polling si aucune conversation n'est sélectionnée
+  }
 }, { immediate: true });
 
 // --- Cycle de vie du composant ---
 onMounted(() => {
-  setupPresenceChannel();
+  setupPresenceChannel(); // Si vous voulez garder la présence en ligne via Echo
+  // Démarrer le polling si un userId est déjà présent au montage (ex: rechargement de page)
+  if (props.userId) {
+    startPolling();
+  }
 });
 
 onBeforeUnmount(() => {
-  if (window.Echo) {
+  stopPolling(); // Arrêter le polling lors du démontage
+  if (window.Echo) { // Nettoyage de la présence Echo si utilisée
     window.Echo.leave('online-users');
   }
 });
