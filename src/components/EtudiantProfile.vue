@@ -265,7 +265,8 @@ const displayedCouverture = computed(() => {
   return url.includes('?') ? url : `${url}?t=${Date.now()}`;
 });
 const CV_url = computed(() => { // Réintroduit
-    return CV.value ? `${import.meta.env.VITE_API_URL}${CV.value}` : null;
+    const url = CV.value 
+  return url.includes('?') ? url : `${url}?t=${Date.now()}`;
 });
 
 // --- Fonctions Utilitaires (Toasts) ---

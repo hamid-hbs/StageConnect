@@ -284,8 +284,8 @@ const fetchUserProfile = async () => {
 
     if (user) {
       if (user.photo) {
-        const baseURL = import.meta.env.VITE_API_URL || '';
-        userPhoto.value = `${baseURL}${user.photo}`;
+        
+        userPhoto.value = user.photo;
       } else {
         userPhoto.value = defaultDashboardPhoto;
       }

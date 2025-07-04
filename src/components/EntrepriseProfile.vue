@@ -293,14 +293,14 @@ onMounted(async () => {
   try {
     isLoadingProfile.value = true;
     isLoadingLists.value = true;
-    const baseURL = import.meta.env.VITE_API_URL;
+    
 
     const userResponse = await axios.get('/api/user/getProfile');
     const user = userResponse.data;
 
     if (user.role === 'entreprise' && user.role_details) {
-      photo.value = user.photo ? `${baseURL}${user.photo}` : '';
-      couverture.value = user.couverture ? `${baseURL}${user.couverture}` : '';
+      photo.value = user.photo ;
+      couverture.value = user.couverture ;
       description.value = user.description || 'Décrivez votre entreprise ici...';
 
       const entrepriseDetails = user.role_details;
@@ -388,9 +388,9 @@ const handleProfileUpload = async (event) => {
           'Content-Type': 'multipart/form-data'
         }
       });
-      const baseURL = import.meta.env.VITE_API_URL;
+      
       const newPhotoPath = response.data.photo_url || response.data;
-      photo.value = `${baseURL}${newPhotoPath}?t=${Date.now()}`;
+      photo.value = `${newPhotoPath}?t=${Date.now()}`;
       displayToast('Photo de profil mise à jour avec succès !', 'success');
     } catch (error) {
       console.error('Erreur lors de l\'upload de la photo de profil :', error);
@@ -425,9 +425,9 @@ const handleCoverUpload = async (event) => {
           'Content-Type': 'multipart/form-data'
         }
       });
-      const baseURL = import.meta.env.VITE_API_URL;
+      
       const newCoverPath = response.data.couverture_url || response.data;
-      couverture.value = `${baseURL}${newCoverPath}?t=${Date.now()}`;
+      couverture.value = `${newCoverPath}?t=${Date.now()}`;
       displayToast('Image de couverture mise à jour avec succès !', 'success');
     } catch (error) {
       console.error('Erreur lors de l\'upload de l\'image de couverture :', error);
@@ -503,13 +503,13 @@ const editProfile = async () => {
  */
 const reloadProfileData = async () => {
   try {
-    const baseURL = import.meta.env.VITE_API_URL;
+    
     const userResponse = await axios.get('/api/user/getProfile');
     const user = userResponse.data;
 
     if (user.role === 'entreprise' && user.role_details) {
-      photo.value = user.photo ? `${baseURL}${user.photo}` : '';
-      couverture.value = user.couverture ? `${baseURL}${user.couverture}` : '';
+      photo.value = user.photo ;
+      couverture.value = user.couverture ;
       description.value = user.description || 'Décrivez votre entreprise ici...';
 
       const entrepriseDetails = user.role_details;

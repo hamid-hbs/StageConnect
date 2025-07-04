@@ -113,13 +113,13 @@ const fetchUnreadNotificationsCount = async () => {
 onMounted(async () => {
   try {
     isLoadingDashboard.value = true;
-    const baseURL = import.meta.env.VITE_API_URL; 
+     
 
     const userResponse = await axios.get('/api/user/getProfile');
     const user = userResponse.data;
 
     if (user) {
-      photo.value = user.photo ? `${baseURL}${user.photo}` : '';
+      photo.value = user.photo ;
     }
 
     // Appel initial pour obtenir le nombre de notifications non lues
