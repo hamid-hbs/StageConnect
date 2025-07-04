@@ -295,7 +295,6 @@ onMounted(async () => {
     isLoadingLists.value = true;
     const baseURL = `${import.meta.env.VITE_API_URL}/storage/`;
 
-
     const userResponse = await axios.get('/api/user/getProfile');
     const user = userResponse.data;
 
@@ -389,7 +388,7 @@ const handleProfileUpload = async (event) => {
           'Content-Type': 'multipart/form-data'
         }
       });
-      const baseURL = import.meta.env.VITE_API_URL;
+      const baseURL = `${import.meta.env.VITE_API_URL}/storage/`;
       const newPhotoPath = response.data.photo_url || response.data;
       photo.value = `${baseURL}${newPhotoPath}?t=${Date.now()}`;
       displayToast('Photo de profil mise à jour avec succès !', 'success');
@@ -426,7 +425,7 @@ const handleCoverUpload = async (event) => {
           'Content-Type': 'multipart/form-data'
         }
       });
-      const baseURL = import.meta.env.VITE_API_URL;
+      const baseURL = `${import.meta.env.VITE_API_URL}/storage/`;
       const newCoverPath = response.data.couverture_url || response.data;
       couverture.value = `${baseURL}${newCoverPath}?t=${Date.now()}`;
       displayToast('Image de couverture mise à jour avec succès !', 'success');
@@ -504,7 +503,7 @@ const editProfile = async () => {
  */
 const reloadProfileData = async () => {
   try {
-    const baseURL = import.meta.env.VITE_API_URL;
+    const baseURL = `${import.meta.env.VITE_API_URL}/storage/`;
     const userResponse = await axios.get('/api/user/getProfile');
     const user = userResponse.data;
 
