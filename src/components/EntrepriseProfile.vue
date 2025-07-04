@@ -1,6 +1,5 @@
 <template>
   <div class="content-page p-4">
-    <!-- Conteneur pour les notifications rapides (toasts) -->
     <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100;">
       <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true" :class="`text-bg-${toastType}`">
         <div class="toast-header">
@@ -21,50 +20,38 @@
     </div>
     
     <div v-else>
-    <!-- Section de l'image de couverture de l'entreprise -->
     <section class="profile-cover-section bg-light rounded shadow-sm mb-4 position-relative">
-      <!-- L'image de couverture affichée. 'displayedCouverture' ajoute un code spécial pour forcer le rafraîchissement. -->
       <img :src="displayedCouverture" alt="Image de couverture de l'entreprise" class="profile-cover-image w-100 rounded-top" />
       <div class="cover-overlay p-3 d-flex justify-content-end align-items-center">
-        <!-- Bouton pour modifier la couverture. Il est désactivé si une image est en cours d'upload. -->
         <label for="cover-upload-input" class="btn btn-sm btn-light d-flex align-items-center cursor-pointer" :disabled="isUploadingCover">
-          <!-- Affiche un petit cercle animé (spinner) si l'upload est en cours -->
           <span v-if="isUploadingCover" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
           <i v-else class="fas fa-camera me-2"></i> {{ isUploadingCover ? 'Chargement...' : 'Modifier la couverture' }}
-          <!-- Champ de fichier caché qui déclenche la fonction 'handleCoverUpload' quand un fichier est choisi -->
           <input type="file" id="cover-upload-input" class="d-none" @change="handleCoverUpload" accept="image/*" :disabled="isUploadingCover" />
         </label>
       </div>
     </section>
 
-    <!-- Carte principale du profil de l'entreprise (nom, logo, description, détails) -->
     <section class="profile-main-card bg-white p-4 rounded shadow-sm mb-4">
       <div class="profile-header d-flex align-items-start pb-4 mb-4 border-bottom">
         <div class="profile-avatar-placeholder me-4 position-relative">
-          <!-- L'avatar (logo) de l'entreprise. 'displayedPhoto' fait aussi le rafraîchissement. -->
           <img :src="displayedPhoto" :alt="`Profil de ${nom_entreprise}`" class="company-logo" />
-          <!-- Bouton/icône pour modifier le logo, désactivé pendant l'upload. -->
           <label for="profile-upload-input" class="edit-profile-icon position-absolute bg-primary text-white rounded-circle p-1 d-flex justify-content-center align-items-center cursor-pointer" :disabled="isUploadingPhoto">
             <span v-if="isUploadingPhoto" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
             <i v-else class="fas fa-camera"></i>
-            <!-- Champ de fichier caché pour l'upload du logo -->
             <input type="file" id="profile-upload-input" class="d-none" @change="handleProfileUpload" accept="image/*" :disabled="isUploadingPhoto" />
           </label>
         </div>
         <div class="profile-info flex-grow-1">
-          <!-- Nom de l'entreprise avec une icône d'édition. Cliquer ouvre le modal de modification. -->
           <h3 class="mb-1 fs-4 text-dark d-flex align-items-center">
             {{ nom_entreprise }}
             <i class="fas fa-pen-to-square ms-2 text-secondary fs-6 cursor-pointer" data-bs-toggle="modal" data-bs-target="#editProfileModal" @click="loadProfileForEditModal"></i>
           </h3>
-          <!-- Indicateur de statut "En ligne" -->
           <p class="status-online fs-6 text-success d-flex align-items-center">
             <span class="dot bg-success me-1"></span> En ligne
           </p>
         </div>
       </div>
 
-      <!-- Champ de description de l'entreprise -->
       <div class="description-field pb-4 mb-4 border-bottom">
         <label for="company-description-profile" class="form-label fw-bold text-dark mb-2">Description de l'entreprise :</label>
         <textarea
@@ -76,7 +63,6 @@
           @input="hasDescriptionChanged = true"
           :disabled="isSavingDescription || isLoadingProfile"
         ></textarea>
-        <!-- Bouton pour enregistrer la description. Désactivé si rien n'a changé ou si l'enregistrement est en cours. -->
         <button
           class="btn btn-primary mt-2"
           :disabled="!hasDescriptionChanged || isSavingDescription || isLoadingProfile"
@@ -87,7 +73,6 @@
         </button>
       </div>
 
-      <!-- Détails affichables du profil de l'entreprise -->
       <div class="profile-details">
         <p class="mb-2 text-dark d-flex align-items-center">
           <i class="fas fa-industry me-2 text-primary fs-5"></i><span class="fw-bold">Domaine d'activité/Secteur :</span> {{ domaine_entreprise || 'Non spécifié' }}
@@ -95,9 +80,6 @@
         <p class="mb-2 text-dark d-flex align-items-center">
           <i class="fas fa-envelope me-2 text-primary fs-5"></i><span class="fw-bold">Mail :</span> {{ email_entreprise || 'Non spécifié' }}
         </p>
-        <!--<p class="mb-2 text-dark d-flex align-items-center">
-          <i class="fas fa-phone me-2 text-primary fs-5"></i><span class="fw-bold">Contact :</span> {{ contact_entreprise || 'Non spécifié' }}
-        </p>-->
         <p class="mb-2 text-dark d-flex align-items-center">
           <i class="fas fa-globe me-2 text-primary fs-5"></i><span class="fw-bold">Site web :</span>
           <a v-if="siteweb" :href="siteweb" target="_blank">{{ siteweb }}</a>
@@ -114,7 +96,6 @@
 
     </div>
 
-    <!-- Modal (fenêtre pop-up) pour l'édition du profil complet de l'entreprise -->
     <div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true" data-bs-backdrop="static">
       <div class="modal-dialog">
         <div class="modal-content">
@@ -123,7 +104,6 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <!-- Formulaire d'édition lié à 'editProfileForm'. @submit.prevent empêche le rechargement de la page. -->
             <form @submit.prevent="editProfile">
               <div class="row">
                 <div class="col-md-6 mb-3">
@@ -135,11 +115,6 @@
                   <input type="email" class="form-control" id="emailEntreprise" v-model="editProfileForm.email_entreprise"/>
                 </div>
               </div>
-
-             <!-- <div class="mb-3">
-                <label for="contactEntreprise" class="form-label">Contact</label>
-                <input type="text" class="form-control" id="contactEntreprise" v-model="editProfileForm.contact_entreprise" />
-              </div> -->
 
               <div class="mb-3">
                 <label for="siteWebEntreprise" class="form-label">Site web</label>
@@ -166,7 +141,6 @@
               <div class="row">
                 <div class="col-md-6 mb-3">
                   <label for="domaineActivite" class="form-label">Domaine d'activité</label>
-                  <!-- Liste déroulante des domaines, remplie par 'listeDomaines' -->
                   <select class="form-select" id="domaineActivite" v-model="editProfileForm.id_domaine">
                     <option value="">Sélectionnez un domaine</option>
                     <option
@@ -180,7 +154,6 @@
                 </div>
                 <div class="col-md-6 mb-3">
                   <label for="villeEntreprise" class="form-label">Ville</label>
-                  <!-- Liste déroulante des villes, remplie par 'listeVilles' -->
                   <select class="form-select" id="villeEntreprise" v-model="editProfileForm.ville_id">
                     <option value="">Sélectionnez une ville</option>
                     <option v-for="ville in listeVilles" :key="ville.id" :value="ville.id">
@@ -192,7 +165,6 @@
             </form>
           </div>
           <div class="modal-footer">
-            <!-- Boutons du modal. "Enregistrer" est désactivé pendant l'enregistrement. -->
             <button type="button" class="btn btn-danger" data-bs-dismiss="modal" :disabled="isSavingProfile">Fermer</button>
             <button type="submit" class="btn btn-primary" @click="editProfile" :disabled="isSavingProfile">
               <span v-if="isSavingProfile" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -221,7 +193,7 @@ const nom_entreprise = ref('Nom de l\'entreprise');
 const email_entreprise = ref('');
 const siteweb = ref('');
 const adresse_entreprise = ref('');
-//const contact_entreprise = ref('');
+// const contact_entreprise = ref(''); // <--- SUPPRIMÉ
 
 const nom_ville = ref('');
 const domaine_entreprise = ref('');
@@ -232,7 +204,7 @@ const entrepriseId = ref(null);
 const editProfileForm = ref({
   nom_entreprise: '',
   email_entreprise: '',
- // contact_entreprise: '',
+  // contact_entreprise: '', // <--- SUPPRIMÉ
   siteweb: '',
   adresse_entreprise: '',
   id_domaine: '',
@@ -268,7 +240,7 @@ const displayedPhoto = computed(() => {
 });
 const displayedCouverture = computed(() => {
   // REMPLACEZ '/path/to/default-cover.jpg' par le chemin réel de votre image par défaut
-  const url = couverture.value;
+  const url = couverture.value || ''; // La couverture peut être vide au début
   return url.includes('?') ? url : `${url}?t=${Date.now()}`;
 });
 
@@ -309,7 +281,7 @@ onMounted(async () => {
       email_entreprise.value = entrepriseDetails.email_entreprise;
       siteweb.value = entrepriseDetails.siteweb;
       adresse_entreprise.value = entrepriseDetails.adresse;
-      //contact_entreprise.value = entrepriseDetails.contact || 'Non spécifié';
+      // contact_entreprise.value = entrepriseDetails.contact || 'Non spécifié'; // <--- SUPPRIMÉ
 
       nom_ville.value = entrepriseDetails.ville ? entrepriseDetails.ville.nom_ville : 'Non spécifié';
       domaine_entreprise.value = entrepriseDetails.domaine ? entrepriseDetails.domaine.libdomaine : 'Non spécifié';
@@ -353,7 +325,7 @@ const loadProfileForEditModal = () => {
   editProfileForm.value = {
     nom_entreprise: nom_entreprise.value,
     email_entreprise: email_entreprise.value,
-    contact_entreprise: contact_entreprise.value,
+    // contact_entreprise: contact_entreprise.value === 'Non spécifié' ? '' : contact_entreprise.value, // <--- SUPPRIMÉ
     siteweb: siteweb.value,
     adresse_entreprise: adresse_entreprise.value,
     // Pour les IDs, vous devez trouver la correspondance avec les listes chargées
@@ -475,7 +447,7 @@ const editProfile = async () => {
     const payload = {
       nom_entreprise: editProfileForm.value.nom_entreprise,
       email_entreprise: editProfileForm.value.email_entreprise,
-      contact: editProfileForm.value.contact_entreprise,
+      // contact: editProfileForm.value.contact_entreprise, // <--- SUPPRIMÉ
       siteweb: editProfileForm.value.siteweb,
       adresse: editProfileForm.value.adresse_entreprise,
       id_domaine: editProfileForm.value.id_domaine,
@@ -517,7 +489,7 @@ const reloadProfileData = async () => {
       email_entreprise.value = entrepriseDetails.email_entreprise;
       siteweb.value = entrepriseDetails.siteweb;
       adresse_entreprise.value = entrepriseDetails.adresse;
-      contact_entreprise.value = entrepriseDetails.contact || 'Non spécifié';
+      // contact_entreprise.value = entrepriseDetails.contact || 'Non spécifié'; // <--- SUPPRIMÉ
 
       nom_ville.value = entrepriseDetails.ville ? entrepriseDetails.ville.nom_ville : 'Non spécifié';
       domaine_entreprise.value = entrepriseDetails.domaine ? entrepriseDetails.domaine.libdomaine : 'Non spécifié';
@@ -526,8 +498,6 @@ const reloadProfileData = async () => {
     console.error('Erreur lors du rechargement des données du profil :', error);
   }
 };
-
-
 
 </script>
 
