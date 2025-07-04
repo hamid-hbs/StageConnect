@@ -4,10 +4,10 @@
       <img :src="getProfilePhoto(headerParticipantData.photo)" :alt="headerParticipantData.name" class="rounded-circle object-fit-cover me-2" style="width: 40px; height: 40px;">
       <div>
         <h5 class="fw-semibold mb-0 text-dark">{{ headerParticipantData.name }}</h5>
-        <p class="text-muted mb-0 small d-flex align-items-center">
+        <!--<p class="text-muted mb-0 small d-flex align-items-center">
           <span :class="{'rounded-circle me-1': true, 'bg-success': isUserOnline(headerParticipantData.id), 'bg-secondary': !isUserOnline(headerParticipantData.id)}" style="width: 8px; height: 8px;"></span>
           {{ isUserOnline(headerParticipantData.id) ? 'En ligne' : 'Hors ligne' }} 
-        </p>
+        </p> -->
       </div>
     </div>
   </div>
@@ -46,14 +46,14 @@
       </div>
     </template>
 
-    <div v-if="isOtherUserTyping && headerParticipantData" class="d-flex align-items-start mb-2">
+    <!--<div v-if="isOtherUserTyping && headerParticipantData" class="d-flex align-items-start mb-2">
       <img :src="getProfilePhoto(headerParticipantData?.photo)" :alt="headerParticipantData?.name" class="rounded-circle object-fit-cover me-2" style="width: 32px; height: 32px;">
       <div class="message-bubble message-received bg-white p-2 border d-flex align-items-center">
         <span class="typing-indicator">
           <span class="dot"></span><span class="dot"></span><span class="dot"></span>
         </span>
       </div>
-    </div>
+    </div> -->
   </div>
 
   <div v-if="userId" class="card-footer bg-white p-3 message-input-area">
