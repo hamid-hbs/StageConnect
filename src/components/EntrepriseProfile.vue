@@ -293,7 +293,8 @@ onMounted(async () => {
   try {
     isLoadingProfile.value = true;
     isLoadingLists.value = true;
-    const baseURL = import.meta.env.VITE_API_URL;
+    const baseURL = `${import.meta.env.VITE_API_URL}/storage/`;
+
 
     const userResponse = await axios.get('/api/user/getProfile');
     const user = userResponse.data;

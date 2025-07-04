@@ -288,7 +288,8 @@ const displayToast = (message, type = 'success') => {
 onMounted(async () => {
   try {
     isLoadingProfile.value = true;
-    const baseURL = import.meta.env.VITE_API_URL;
+    const baseURL = `${import.meta.env.VITE_API_URL}/storage/`;
+
 
     // Chargement des listes pour le modal d'édition AVANT de charger le profil
     // afin que les données de référence soient disponibles.
