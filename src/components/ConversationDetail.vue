@@ -1,6 +1,7 @@
 <template>
   <div class="card-header bg-white p-3 border-bottom d-flex align-items-center justify-content-between" v-if="userId && headerParticipantData">
-    <div class="d-flex align-items-center">
+    <router-link to=":type/:id/profile" class="d-flex align-items-center text-decoration-none text-dark">
+      
       <img :src="getProfilePhoto(headerParticipantData.photo)" :alt="headerParticipantData.name" class="rounded-circle object-fit-cover me-2" style="width: 40px; height: 40px;">
       <div>
         <h5 class="fw-semibold mb-0 text-dark">{{ headerParticipantData.name }}</h5>
@@ -9,7 +10,7 @@
           {{ isUserOnline(headerParticipantData.id) ? 'En ligne' : 'Hors ligne' }} 
         </p> -->
       </div>
-    </div>
+    </router-link>
   </div>
 
   <div v-if="loadingMessages" class="flex-grow-1 d-flex justify-content-center align-items-center text-muted fs-5">
