@@ -4,7 +4,11 @@
       <img :src="getProfilePhoto(headerParticipantData.photo)" :alt="headerParticipantData.name" class="rounded-circle object-fit-cover me-2" style="width: 40px; height: 40px;">
       <div>
         <h5 class="fw-semibold mb-0 text-dark">{{ headerParticipantData.name }}</h5>
-        </div>
+        <!--<p class="text-muted mb-0 small d-flex align-items-center">
+          <span :class="{'rounded-circle me-1': true, 'bg-success': isUserOnline(headerParticipantData.id), 'bg-secondary': !isUserOnline(headerParticipantData.id)}" style="width: 8px; height: 8px;"></span>
+          {{ isUserOnline(headerParticipantData.id) ? 'En ligne' : 'Hors ligne' }} 
+        </p> -->
+      </div>
     </div>
   </div>
 
@@ -32,13 +36,8 @@
       </div>
 
       <div v-else class="d-flex justify-content-end mb-2">
-        <div class="message-bubble message-sent bg-primary text-white p-2 d-flex flex-column align-items-end">
-          <div class="d-flex align-items-center">
-            <span class="me-2">{{ message.contenu }}</span>
-            <button @click="confirmDeleteMessage(message.id)" class="btn btn-sm btn-link text-white p-0" title="Supprimer le message">
-              <i class="fas fa-trash-alt"></i>
-            </button>
-          </div>
+        <div class="message-bubble message-sent bg-primary text-white p-2">
+          {{ message.contenu }}
           <div class="text-end small mt-1">
             {{ formatDateFull(message.created_at) }}
             <i :class="{'fas fa-check-double ms-1': true, 'text-white-50': !message.lu, 'text-success': message.lu}"></i>
@@ -47,7 +46,15 @@
       </div>
     </template>
 
-    </div>
+    <!--<div v-if="isOtherUserTyping && headerParticipantData" class="d-flex align-items-start mb-2">
+      <img :src="getProfilePhoto(headerParticipantData?.photo)" :alt="headerParticipantData?.name" class="rounded-circle object-fit-cover me-2" style="width: 32px; height: 32px;">
+      <div class="message-bubble message-received bg-white p-2 border d-flex align-items-center">
+        <span class="typing-indicator">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+        </span>
+      </div>
+    </div> -->
+  </div>
 
   <div v-if="userId" class="card-footer bg-white p-3 message-input-area">
     <div class="input-group">
@@ -101,6 +108,7 @@ const props = defineProps({
 
 const emit = defineEmits(['messages-read', 'conversation-updated']);
 
+// --- Données réactives spécifiques à la conversation ---
 const messages = ref([]);
 const newMessageContent = ref('');
 const loadingMessages = ref(false);
@@ -108,10 +116,12 @@ const sendingMessage = ref(false);
 const messageError = ref(null);
 const messagesContainer = ref(null);
 const isOtherUserTyping = ref(false);
-const onlineUsers = ref({});
+const onlineUsers = ref({}); // Maintenu pour la présence en ligne si vous utilisez encore Echo pour ça
 
+// NOUVEAU: Une ref pour stocker les données du participant à afficher dans l'en-tête
 const headerParticipantData = ref(null);
 
+// Propriété calculée pour trouver le participant dans la liste des conversations existantes
 const participantFromList = computed(() => {
   if (!props.userId || !props.conversationsList.length) {
     return null;
@@ -122,20 +132,23 @@ const participantFromList = computed(() => {
 
 // --- Polling Configuration ---
 let pollingInterval = null;
-const POLLING_INTERVAL_MS = 3000; 
+const POLLING_INTERVAL_MS = 3000; // Poll toutes les 3 secondes (ajustez si besoin)
 
+// Fonction pour démarrer le polling
 const startPolling = () => {
+  // Arrêter tout polling précédent pour éviter les duplications
   if (pollingInterval) {
     clearInterval(pollingInterval);
   }
-  if (props.userId) { 
+  if (props.userId) { // Ne démarrer le polling que si une conversation est sélectionnée
     console.log(`Démarrage du polling pour les messages toutes les ${POLLING_INTERVAL_MS / 1000} secondes.`);
     pollingInterval = setInterval(async () => {
-      await fetchConversationMessages(props.userId, true); 
+      await fetchConversationMessages(props.userId, true); // True pour indiquer que c'est un polling
     }, POLLING_INTERVAL_MS);
   }
 };
 
+// Fonction pour arrêter le polling
 const stopPolling = () => {
   if (pollingInterval) {
     console.log("Arrêt du polling des messages.");
@@ -154,6 +167,7 @@ const setupPresenceChannel = () => {
                 users.forEach(user => {
                     onlineUsers.value[user.id] = user;
                 });
+                // Mettre à jour le statut en ligne de l'interlocuteur si il est dans la liste des connectés
                 if (headerParticipantData.value) {
                     headerParticipantData.value.is_online = isUserOnline(headerParticipantData.value.id);
                 }
@@ -161,6 +175,7 @@ const setupPresenceChannel = () => {
             .joining((user) => {
                 console.log('Utilisateur rejoint (JOINING - Detail):', user.name);
                 onlineUsers.value[user.id] = user;
+                // Si l'utilisateur qui rejoint est notre interlocuteur actuel
                 if (headerParticipantData.value && user.id === headerParticipantData.value.id) {
                     headerParticipantData.value.is_online = true;
                 }
@@ -168,6 +183,7 @@ const setupPresenceChannel = () => {
             .leaving((user) => {
                 console.log('Utilisateur quitte (LEAVING - Detail):', user.name);
                 delete onlineUsers.value[user.id];
+                // Si l'utilisateur qui quitte est notre interlocuteur actuel
                 if (headerParticipantData.value && user.id === headerParticipantData.value.id) {
                     headerParticipantData.value.is_online = false;
                 }
@@ -186,33 +202,37 @@ const isUserOnline = (userId) => {
 
 
 // --- Fonctions de récupération et d'envoi ---
+// Ajout du paramètre `isPolling`
 const fetchConversationMessages = async (userId, isPolling = false) => {
   if (!userId) {
     messages.value = [];
     headerParticipantData.value = null;
     loadingMessages.value = false;
-    stopPolling();
+    stopPolling(); // Arrête le polling si plus de userId
     return;
   }
 
+  // Ne montrer le loader que pour le chargement initial ou le changement de conversation
   if (!isPolling) {
     loadingMessages.value = true;
     messageError.value = null;
-    messages.value = [];
+    messages.value = []; // Effacer les messages avant de charger les nouveaux
   }
 
+  // Tente d'abord de récupérer les infos du participant depuis la liste des conversations
   if (participantFromList.value) {
     headerParticipantData.value = participantFromList.value;
+    // Mettez à jour le statut en ligne de l'interlocuteur même si c'est un appel de polling
     headerParticipantData.value.is_online = isUserOnline(participantFromList.value.id);
-  } else if (!isPolling) {
+  } else if (!isPolling) { // Ne le faire que lors du chargement initial, pas à chaque polling
     try {
         const userResponse = await axios.get(`/api/users/${userId}/profile`);
+        // Assurez-vous que la structure de headerParticipantData est cohérente
         headerParticipantData.value = {
           id: userResponse.data.id,
           name: userResponse.data.name,
           photo: userResponse.data.photo,
-          is_online: isUserOnline(userResponse.data.id),
-          role: userResponse.data.role
+          is_online: isUserOnline(userResponse.data.id) // Utilise l'état en ligne de la présence
         };
     } catch (error) {
         console.error("Erreur lors de la récupération des infos du participant pour l'en-tête:", error);
@@ -222,23 +242,28 @@ const fetchConversationMessages = async (userId, isPolling = false) => {
 
   try {
     const response = await axios.get(`/api/messages/conversation/${userId}`);
-    const newMessages = response.data; 
+    const newMessages = response.data; // Les nouveaux messages récupérés du serveur
 
+    // Comparer les messages pour voir s'il y a des nouveaux ou des mises à jour (ex: lu)
     const hasNewMessages = newMessages.length > messages.value.length;
     const hasStatusChanged = newMessages.some(newMessage => {
         const oldMessage = messages.value.find(m => m.id === newMessage.id);
         return oldMessage && oldMessage.lu !== newMessage.lu;
     });
 
-    messages.value = newMessages; 
+    messages.value = newMessages; // Met à jour tous les messages
 
+    // Filtrer les messages non lus qui ont été envoyés PAR l'autre utilisateur
     const unreadMessages = messages.value.filter(msg => msg.expediteur_id === props.userId && !msg.lu);
     if (unreadMessages.length > 0) {
       await markMessagesAsRead(unreadMessages);
-      emit('messages-read'); 
+      emit('messages-read'); // Émet un événement pour que le parent mette à jour le nombre de messages non lus
     }
+    // Émettez toujours 'conversation-updated' en cas de polling pour maintenir la liste à jour
+    // (par ex., pour les badges de non lus ou l'ordre des conversations).
     emit('conversation-updated');
 
+    // Faire défiler vers le bas uniquement si de nouveaux messages sont arrivés
     if (hasNewMessages || hasStatusChanged) {
         nextTick(() => scrollToBottom());
     }
@@ -247,7 +272,7 @@ const fetchConversationMessages = async (userId, isPolling = false) => {
     console.error("Erreur lors de la récupération des messages:", error);
     messageError.value = "Impossible de charger les messages pour cette conversation.";
   } finally {
-    if (!isPolling) { 
+    if (!isPolling) { // Ne masquer le loader que si ce n'était pas un appel de polling
       loadingMessages.value = false;
     }
   }
@@ -306,34 +331,6 @@ const sendMessage = async () => {
   }
 };
 
-// NOUVELLE FONCTIONNALITÉ : Suppression de message
-const confirmDeleteMessage = (messageId) => {
-  if (confirm('Êtes-vous sûr de vouloir supprimer ce message ? Cette action est irréversible.')) {
-    deleteMessage(messageId);
-  }
-};
-
-const deleteMessage = async (messageId) => {
-  try {
-    // Requête DELETE à votre API pour supprimer le message
-    // Votre API devrait avoir une route comme DELETE /api/messages/{id}
-    await axios.delete(`/api/messages/${messageId}`);
-    
-    // Supprimer le message de l'affichage localement
-    messages.value = messages.value.filter(msg => msg.id !== messageId);
-    console.log(`Message avec l'ID ${messageId} supprimé.`);
-    // Émettre un événement pour que le parent puisse mettre à jour la liste des conversations ou les badges de non lus
-    emit('conversation-updated'); 
-  } catch (error) {
-    console.error("Erreur lors de la suppression du message:", error);
-    messageError.value = "Impossible de supprimer le message.";
-    if (error.response?.data?.message) {
-      messageError.value = error.response.data.message;
-    }
-  }
-};
-
-
 // --- Fonctions utilitaires d'affichage ---
 const scrollToBottom = () => {
   if (messagesContainer.value) {
@@ -383,25 +380,26 @@ const adjustTextareaHeight = () => {
 
 // --- Watchers ---
 watch(() => props.userId, async (newUserId) => {
-  await fetchConversationMessages(newUserId); 
+  await fetchConversationMessages(newUserId); // Appel initial
   if (newUserId) {
-    startPolling();
+    startPolling(); // Démarrer le polling si une conversation est sélectionnée
   } else {
-    stopPolling();
+    stopPolling(); // Arrêter le polling si aucune conversation n'est sélectionnée
   }
 }, { immediate: true });
 
 // --- Cycle de vie du composant ---
 onMounted(() => {
-  setupPresenceChannel(); 
+  setupPresenceChannel(); // Si vous voulez garder la présence en ligne via Echo
+  // Démarrer le polling si un userId est déjà présent au montage (ex: rechargement de page)
   if (props.userId) {
     startPolling();
   }
 });
 
 onBeforeUnmount(() => {
-  stopPolling(); 
-  if (window.Echo) { 
+  stopPolling(); // Arrêter le polling lors du démontage
+  if (window.Echo) { // Nettoyage de la présence Echo si utilisée
     window.Echo.leave('online-users');
   }
 });
@@ -437,18 +435,6 @@ onBeforeUnmount(() => {
   color: white;
   border-bottom-right-radius: 0.25rem; /* Coin "pointu" en bas à droite */
 }
-
-/* Styles spécifiques pour le bouton de suppression dans le message envoyé */
-.message-sent .btn-link {
-  color: inherit; /* Utilise la couleur du texte parent (blanc) */
-  opacity: 0.7; /* Rend l'icône un peu transparente */
-  transition: opacity 0.2s ease-in-out;
-}
-
-.message-sent .btn-link:hover {
-  opacity: 1; /* Pleine opacité au survol */
-}
-
 
 /* Animation de l'indicateur de saisie */
 .typing-indicator .dot {
