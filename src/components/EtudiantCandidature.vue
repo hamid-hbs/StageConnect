@@ -49,7 +49,7 @@
       <div v-for="candidature in filteredCandidatures" :key="candidature.id" class="card application-card mb-3">
         <div class="card-body">
           <h5 class="card-title text-muted"><span>
-            Offre</span> : <router-link :to="{ name: 'etudiant-offre-details', params: { id: candidature.id } }">
+            Offre</span> : <router-link :to="{ name: 'etudiant-offre-details', params: { id: candidature.offre_id } }">
   <span class="fw-bold ">{{ candidature.offre.titre || 'Offre inconnue' }}</span>
 </router-link></h5>
           <h6 class="card-subtitle mb-2 text-muted">
