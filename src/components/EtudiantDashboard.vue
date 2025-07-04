@@ -119,7 +119,7 @@ onMounted(async () => {
     const user = userResponse.data;
 
     if (user) {
-      photo.value = user.photo ;
+      photo.value = user.photo;
     }
 
     // Appel initial pour obtenir le nombre de notifications non lues
