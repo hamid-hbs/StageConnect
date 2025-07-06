@@ -46,6 +46,9 @@
               {{ name }}
               <i class="fas fa-pen-to-square ms-2 text-secondary fs-6 cursor-pointer" data-bs-toggle="modal" data-bs-target="#editProfileModal" @click="loadProfileForEditModal"></i>
             </h3>
+            <p class="status-online fs-6 text-success d-flex align-items-center">
+            <span class="dot bg-success me-1"></span> En ligne
+          </p>
           </div>
         </div>
 
