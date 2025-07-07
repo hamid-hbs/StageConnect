@@ -142,12 +142,27 @@
               </div>
               <div class="row">
                 <div class="col-md-6 mb-3">
-                  <label for="offerStartDate" class="form-label">Date de début du stage</label>
-                  <input type="date" class="form-control" id="offerStartDate" v-model="newOffer.date_debut" :min="todayDate" required>
+                  <label for="offerExpirationDate" class="form-label">Date d'expiration de l'offre</label>
+                  <input
+                    type="date"
+                    class="form-control"
+                    id="offerExpirationDate"
+                    v-model="newOffer.date_expiration"
+                    :min="minExpirationDateForOffer"
+                    :max="maxExpirationDateForOffer"
+                    required
+                  >
                 </div>
                 <div class="col-md-6 mb-3">
-                  <label for="offerExpirationDate" class="form-label">Date d'expiration de l'offre</label>
-                  <input type="date" class="form-control" id="offerExpirationDate" v-model="newOffer.date_expiration" :min="todayDate" :max="minExpirationDate" required>
+                  <label for="offerStartDate" class="form-label">Date de début du stage</label>
+                  <input
+                    type="date"
+                    class="form-control"
+                    id="offerStartDate"
+                    v-model="newOffer.date_debut"
+                    :min="minStartDateForStage"
+                    required
+                  >
                 </div>
               </div>
               <div class="mb-3">
@@ -189,8 +204,8 @@
 
 <script setup>
 import { ref, computed, onMounted, reactive } from 'vue';
-import axios from '../axios';
-import { Modal } from 'bootstrap';
+import axios from '../axios'; // Assurez-vous que le chemin vers votre instance axios est correct
+import { Modal } from 'bootstrap'; // Importez le module Modal de Bootstrap
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -217,8 +232,8 @@ const newOffer = reactive({
   description: '',
   domaine_id: '',
   adresse: '',
+  date_expiration: '', // Déplacée ici pour l'ordre logique
   date_debut: '',
-  date_expiration: '',
   duree_en_semaines: null,
   statut: 'active',
 });
@@ -238,9 +253,8 @@ const showMessage = (title, message, type = 'info', onConfirm = null) => {
   messageModal.title = title;
   messageModal.message = message;
   messageModal.type = type;
-  messageModal.onConfirm = onConfirm; // Assigner la fonction de confirmation
+  messageModal.onConfirm = onConfirm;
   const modalElement = document.getElementById('messageModal');
-  // Obtenir l'instance existante ou en créer une nouvelle
   const bootstrapModal = Modal.getInstance(modalElement) || new Modal(modalElement);
   bootstrapModal.show();
 };
@@ -249,7 +263,6 @@ const hideMessage = () => {
   const modalElement = document.getElementById('messageModal');
   const bootstrapModal = Modal.getInstance(modalElement) || new Modal(modalElement);
   bootstrapModal.hide();
-  // Ne pas réinitialiser isVisible ici, l'événement 'hidden.bs.modal' le fera
 };
 
 const confirmAction = () => {
@@ -263,17 +276,35 @@ const confirmAction = () => {
 // --- Computed properties pour les dates dans la modale ---
 const todayDate = computed(() => {
   const today = new Date();
-  return today.toISOString().split('T')[0];
+  return today.toISOString().split('T')[0]; // Format YYYY-MM-DD
 });
 
-const minExpirationDate = computed(() => {
-  // La date d'expiration de l'offre (date limite pour postuler)
-  // devrait être au plus tard la date de début du stage.
-  // Si date_debut est vide, la date d'expiration peut être n'importe quand après aujourd'hui.
-  if (newOffer.date_debut) {
-    return new Date(newOffer.date_debut).toISOString().split('T')[0];
-  }
-  return ''; // Pas de limite supérieure si date_debut n'est pas définie
+const minExpirationDateForOffer = computed(() => {
+    // La date d'expiration de l'offre ne peut pas être antérieure à aujourd'hui
+    return todayDate.value;
+});
+
+const maxExpirationDateForOffer = computed(() => {
+    // La date d'expiration de l'offre ne doit pas dépasser la date de début du stage si elle est définie.
+    // Si la date de début est définie, la date d'expiration ne peut pas être après cette date.
+    if (newOffer.date_debut) {
+        return newOffer.date_debut;
+    }
+    // Si la date de début n'est pas encore définie, on met une limite raisonnable (ex: 1 an à partir d'aujourd'hui)
+    const maxDate = new Date();
+    maxDate.setFullYear(maxDate.getFullYear() + 1);
+    return maxDate.toISOString().split('T')[0];
+});
+
+
+const minStartDateForStage = computed(() => {
+    // La date de début du stage doit être au moins égale à la date d'expiration de l'offre.
+    // Si la date d'expiration est définie, le stage ne peut pas commencer avant.
+    if (newOffer.date_expiration) {
+        return newOffer.date_expiration;
+    }
+    // Si la date d'expiration n'est pas encore définie, le stage ne peut pas commencer avant aujourd'hui.
+    return todayDate.value;
 });
 
 
@@ -299,8 +330,7 @@ const fetchOffers = async () => {
 
   try {
     const response = await axios.get(`/api/mes-offres`);
-    // L'API mesOffres renvoie directement un tableau, pas un objet avec une propriété 'data'
-    offers.value = response.data; 
+    offers.value = response.data;
   } catch (error) {
     console.error('Erreur lors de la récupération des offres :', error);
     offersError.value = 'Impossible de charger les offres.';
@@ -327,17 +357,15 @@ const filteredOffers = computed(() => {
     return [];
   }
 
-  let filtered = [...offers.value]; // Crée une copie pour ne pas modifier l'original
+  let filtered = [...offers.value];
 
   if (filterStatus.value) {
     if (filterStatus.value === 'expiree') {
       filtered = filtered.filter(offer => {
-        // Une offre est 'expiree' si son statut est 'expiree' OU si sa date d'expiration est passée
         return offer.statut === 'expiree' || isExpired(offer.date_expiration);
       });
     } else if (filterStatus.value === 'active') {
       filtered = filtered.filter(offer => {
-        // Une offre est 'active' si son statut est 'active' ET sa date d'expiration n'est pas passée
         return offer.statut === 'active' && !isExpired(offer.date_expiration);
       });
     }
@@ -350,13 +378,10 @@ const filteredOffers = computed(() => {
     );
   }
 
-  // Tri par date de création (du plus récent au plus ancien)
-  // Assurez-vous que votre objet 'offer' a une propriété 'created_at' ou similaire
   filtered.sort((a, b) => {
-    // Supposons que 'created_at' est au format ISO 8601
     const dateA = new Date(a.created_at);
     const dateB = new Date(b.created_at);
-    return dateB.getTime() - dateA.getTime(); // Pour un tri descendant (plus récent en premier)
+    return dateB.getTime() - dateA.getTime();
   });
 
   return filtered;
@@ -364,7 +389,6 @@ const filteredOffers = computed(() => {
 
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
-  // Assurez-vous que la date est au format YYYY-MM-DD pour une création correcte de Date
   const cleanDateString = dateString.split('T')[0];
   const options = { year: 'numeric', month: 'long', day: 'numeric' };
   try {
@@ -377,26 +401,24 @@ const formatDate = (dateString) => {
 
 const isExpired = (expirationDate) => {
   if (!expirationDate) return true;
-  // Assurez-vous que la date est au format YYYY-MM-DD pour une création correcte de Date
   const cleanDateString = expirationDate.split('T')[0];
   try {
     const expires = new Date(cleanDateString);
     const now = new Date();
-    expires.setHours(0, 0, 0, 0); // Réinitialiser l'heure pour comparer seulement la date
-    now.setHours(0, 0, 0, 0);     // Réinitialiser l'heure pour comparer seulement la date
+    expires.setHours(0, 0, 0, 0);
+    now.setHours(0, 0, 0, 0);
     return expires < now;
   } catch (e) {
     console.error('Erreur lors de la vérification de l\'expiration de la date:', expirationDate, e);
-    return true; // En cas d'erreur de format, considérer comme expiré
+    return true;
   }
 };
 
 const getDisplayStatus = (statut, expirationDate) => {
-  // Le statut 'expiree' du backend prime, sinon on vérifie la date d'expiration
   if (statut === 'expiree' || isExpired(expirationDate)) {
     return 'Expirée';
   }
-  return 'Disponible'; // Si statut est 'active' et non expirée
+  return 'Disponible';
 };
 
 const getStatusBadgeClass = (statut, expirationDate) => {
@@ -409,7 +431,7 @@ const getStatusBadgeClass = (statut, expirationDate) => {
 const displayFilterStatus = computed(() => {
   switch (filterStatus.value) {
     case 'active': return 'Disponible';
-    case 'expiree': return 'Expirée'; // Correction: 'Expirée' au lieu de 'Expiré' pour la cohérence
+    case 'expiree': return 'Expirée';
     default: return 'Filtrer par statut';
   }
 });
@@ -421,8 +443,7 @@ const setFilterStatus = (status) => {
 };
 
 const filterOffers = () => {
-  // La propriété calculée filteredOffers gère déjà le filtrage en temps réel
-  // Cette fonction est juste un déclencheur si l'on voulait faire autre chose ici.
+  // Le filtrage est géré par la propriété calculée `filteredOffers`
 };
 
 const confirmDeactivation = (id) => {
@@ -440,8 +461,8 @@ const deactivateOffer = async (id) => {
       statut: 'expiree'
     });
     showMessage('Succès', response.data.message || 'Offre désactivée avec succès !', 'success');
-    await fetchOffers(); // Rafraîchir la liste des offres
-    await fetchStatistics(); // Rafraîchir les statistiques
+    await fetchOffers();
+    await fetchStatistics();
   } catch (error) {
     console.error('Erreur lors de la désactivation de l\'offre :', error);
     let errorMessage = 'Échec de la désactivation de l\'offre.';
@@ -449,7 +470,6 @@ const deactivateOffer = async (id) => {
       if (typeof error.response.data === 'object' && error.response.data.message) {
         errorMessage = error.response.data.message;
       } else if (typeof error.response.data === 'object') {
-        // Concaténer les messages d'erreur de validation si présents
         errorMessage += '\n' + Object.values(error.response.data).map(e => Array.isArray(e) ? e.join(', ') : e).join('\n');
       } else if (typeof error.response.data === 'string') {
         errorMessage += '\n' + error.response.data;
@@ -462,7 +482,27 @@ const deactivateOffer = async (id) => {
 const createOffer = async () => {
   creatingOffer.value = true;
   try {
-    newOffer.statut = 'active'; // Les nouvelles offres sont toujours actives
+    newOffer.statut = 'active';
+
+    // Validation des dates avant envoi
+    const expDate = new Date(newOffer.date_expiration);
+    const startDate = new Date(newOffer.date_debut);
+    const today = new Date(todayDate.value); // Utilisez todayDate computed property pour cohérence
+
+    expDate.setHours(0,0,0,0); // Normaliser les dates pour la comparaison
+    startDate.setHours(0,0,0,0);
+    today.setHours(0,0,0,0);
+
+    if (expDate < today) {
+        showMessage('Erreur de Date', "La date d'expiration de l'offre ne peut pas être antérieure à aujourd'hui.", 'error');
+        creatingOffer.value = false;
+        return;
+    }
+    if (startDate < expDate) {
+        showMessage('Erreur de Date', "La date de début du stage ne peut pas être antérieure à la date d'expiration de l'offre.", 'error');
+        creatingOffer.value = false;
+        return;
+    }
 
     const response = await axios.post('/api/offres', newOffer);
     showMessage('Succès', response.data.message || 'Offre créée avec succès !', 'success');
@@ -483,8 +523,8 @@ const createOffer = async () => {
     const bootstrapModal = Modal.getInstance(modalElement) || new Modal(modalElement);
     bootstrapModal.hide();
 
-    await fetchOffers(); // Rafraîchir la liste des offres
-    await fetchStatistics(); // Rafraîchir les statistiques
+    await fetchOffers();
+    await fetchStatistics();
 
   } catch (error) {
     console.error('Erreur lors de la création de l\'offre :', error.response ? error.response.data : error.message);
@@ -493,7 +533,6 @@ const createOffer = async () => {
       if (typeof error.response.data === 'object' && error.response.data.message) {
         errorMessage = error.response.data.message;
       } else if (typeof error.response.data === 'object') {
-        // Concaténer les messages d'erreur de validation si présents
         errorMessage += '\n' + Object.values(error.response.data).map(e => Array.isArray(e) ? e.join(', ') : e).join('\n');
       } else if (typeof error.response.data === 'string') {
         errorMessage += '\n' + error.response.data;
@@ -510,21 +549,16 @@ onMounted(() => {
   fetchOffers();
   fetchDomaines();
 
-  // Gérer le nettoyage des backdrops des modales Bootstrap
   const modals = ['addOfferModal', 'messageModal'];
   modals.forEach(modalId => {
     const modalElement = document.getElementById(modalId);
     if (modalElement) {
       modalElement.addEventListener('hidden.bs.modal', () => {
-        // Supprimer manuellement le backdrop si Bootstrap ne le fait pas correctement
         const backdrops = document.querySelectorAll('.modal-backdrop');
         backdrops.forEach(backdrop => backdrop.remove());
-        // S'assurer que la classe 'modal-open' est retirée du body
         document.body.classList.remove('modal-open');
-        // Si c'est la modale de message, réinitialiser son état visible
         if (modalId === 'messageModal') {
           messageModal.isVisible = false;
-          // Détruire l'instance de la modale pour éviter les fuites de mémoire
           const bootstrapModal = Modal.getInstance(modalElement);
           if (bootstrapModal) {
             bootstrapModal.dispose();
