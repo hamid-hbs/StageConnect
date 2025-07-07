@@ -252,7 +252,8 @@ onMounted(async () => {
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-height: 3.6em; /* Approx. 3 lines of text */
+  min-height: 3.6em; /* Approx. 3 lines of text (e.g., 1.2em line-height * 3 lines) */
+  -webkit-line-clamp: 3; /* Limite le texte à 3 lignes pour les navigateurs Webkit */
 }
 
 /* Styles pour les toasts */

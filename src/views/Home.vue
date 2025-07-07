@@ -743,7 +743,7 @@ html {
   overflow: hidden;
   text-overflow: ellipsis;
   min-height: 3.6em; /* Assure une hauteur minimale pour 3 lignes (approximativement 1.2em * 3) */
-  -webkit-line-clamp: 3; /* Limite le texte à 3 lignes pour Webkit */
+  /*-webkit-line-clamp: 3;  Limite le texte à 3 lignes pour Webkit */
 }
 
 /* Responsive adjustments for offers section */
