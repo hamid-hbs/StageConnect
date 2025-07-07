@@ -115,13 +115,13 @@
             <div class="text-center mt-5">
               <button v-if="userIsStudent && getDisplayStatus(offreDetails.statut, offreDetails.date_expiration) === 'Disponible'"
                       @click="handleApply"
-                      :disabled="applying || hasApplied" 
+                      :disabled="applying || hasApplied"
                       class="btn btn-primary btn-lg"
                       data-bs-toggle="modal"
                       data-bs-target="#motivationLetterModal">
                 <span v-if="applying" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                 <i v-else class="fas fa-paper-plane me-2"></i>
-                {{ applying ? 'Envoi de la candidature...' : (hasApplied ? 'Déjà postulé' : 'Envoyer candidature') }} <!-- Le texte change si hasApplied est true -->
+                {{ applying ? 'Envoi de la candidature...' : (hasApplied ? 'Déjà postulé' : 'Envoyer candidature') }}
               </button>
               <button v-else-if="userIsStudent && getDisplayStatus(offreDetails.statut, offreDetails.date_expiration) === 'Expirée'"
                       class="btn btn-secondary btn-lg" disabled>
@@ -179,7 +179,15 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from '../axios';
-import {Modal, Toast} from 'bootstrap';
+import { Modal, Toast } from 'bootstrap';
+
+// Déclarez 'id' comme une prop
+const props = defineProps({
+  id: {
+    type: [String, Number],
+    required: true
+  }
+});
 
 // --- Variables Réactives ---
 const offreDetails = ref(null);
@@ -187,11 +195,12 @@ const nombreCandidatures = ref(0);
 const loading = ref(true);
 const error = ref(null);
 const applying = ref(false);
-const hasApplied = ref(false); // <-- Déclarée ici
+const hasApplied = ref(false);
 
 // Variables pour les toasts de notification
 const toastMessage = ref('');
 const toastType = ref('success');
+const pendingToast = ref(null); // { message: '...', type: '...' }
 
 // Rôle de l'utilisateur connecté (sera mis à jour depuis l'API)
 const userRole = ref(null);
@@ -200,10 +209,10 @@ const userRole = ref(null);
 const route = useRoute();
 const router = useRouter();
 
-// --- Nouvelles Variables Réactives pour la Modale ---
+// --- Variables Réactives pour la Modale ---
 const lettreMotivation = ref('');
 const motivationLetterError = ref('');
-let motivationModal = null; // Pour stocker l'instance de la modale Bootstrap
+let motivationModalInstance = null; // Pour stocker l'instance de la modale Bootstrap
 
 // --- Propriété calculée pour vérifier si l'utilisateur est un étudiant ---
 const userIsStudent = computed(() => {
@@ -219,7 +228,7 @@ const dynamicGenericProfileRouteName = computed(() => {
   } else if (route.path.startsWith('/etudiant-dashboard')) {
     return 'etudiant-generic-profile-view';
   }
-  return ''; // Fallback, gérer le cas où la route n'est pas dans un dashboard connu
+  return '';
 });
 
 
@@ -227,7 +236,7 @@ const dynamicGenericProfileRouteName = computed(() => {
 const fetchOfferDetails = async (offerId) => {
   loading.value = true;
   error.value = null;
-  hasApplied.value = false; // Réinitialisé avant chaque fetch pour éviter des états résiduels
+  hasApplied.value = false;
 
   try {
     const userResponse = await axios.get('/api/user/getProfile');
@@ -236,7 +245,7 @@ const fetchOfferDetails = async (offerId) => {
     const response = await axios.get(`/api/offres/${offerId}`);
     offreDetails.value = response.data.offre;
     nombreCandidatures.value = response.data.nombre_candidatures;
-    hasApplied.value = response.data.has_applied || false; // <-- La valeur du backend est assignée ici
+    hasApplied.value = response.data.has_applied || false;
 
   } catch (err) {
     console.error('Erreur lors de la récupération des détails de l\'offre ou du profil utilisateur :', err.response ? err.response.data : err.message);
@@ -261,31 +270,30 @@ const fetchOfferDetails = async (offerId) => {
 
 // --- Fonctions de Soumission de Candidature ---
 const handleApply = () => {
-    // Cette vérification est redondante avec le v-if sur le bouton, mais ajoute une couche de sécurité
     if (!userIsStudent.value) {
-        displayToast("Seuls les étudiants peuvent postuler à cette offre.", 'danger');
+        pendingToast.value = { message: "Seuls les étudiants peuvent postuler à cette offre.", type: 'danger' };
         return;
     }
     if (hasApplied.value) {
-        displayToast("Vous avez déjà postulé à cette offre.", 'info');
+        pendingToast.value = { message: "Vous avez déjà postulé à cette offre.", type: 'info' };
         return;
     }
-    // Réinitialiser l'erreur et afficher la modale
     lettreMotivation.value = '';
     motivationLetterError.value = '';
-    // Initialiser la modale Bootstrap si elle n'existe pas déjà
     const modalElement = document.getElementById('motivationLetterModal');
-    if (modalElement && window.bootstrap && window.bootstrap.Modal) {
-        motivationModal = new window.bootstrap.Modal(modalElement);
-        motivationModal.show();
+    if (modalElement) {
+        if (!motivationModalInstance) {
+            motivationModalInstance = new Modal(modalElement);
+        }
+        motivationModalInstance.show();
+        console.log('Modale instance créée et affichée :', motivationModalInstance);
     }
 };
 
 const confirmApply = async () => {
-    // Vérification finale du rôle avant l'envoi de l'API (sécurité supplémentaire)
     if (!userIsStudent.value) {
-        displayToast("Vous n'êtes pas autorisé à envoyer une candidature.", 'danger');
-        if (motivationModal) motivationModal.hide();
+        pendingToast.value = { message: "Vous n'êtes pas autorisé à envoyer une candidature.", type: 'danger' };
+        if (motivationModalInstance) motivationModalInstance.hide();
         return;
     }
 
@@ -293,10 +301,11 @@ const confirmApply = async () => {
         motivationLetterError.value = 'La lettre de motivation doit contenir au moins 50 caractères.';
         return;
     }
-    motivationLetterError.value = ''; // Réinitialiser l'erreur s'il y en avait une
+    motivationLetterError.value = '';
 
     if (!offreDetails.value || !offreDetails.value.id) {
-        displayToast("Impossible de postuler : ID de l'offre manquant.", 'danger');
+        pendingToast.value = { message: "Impossible de postuler : ID de l'offre manquant.", type: 'danger' };
+        if (motivationModalInstance) motivationModalInstance.hide();
         return;
     }
 
@@ -309,25 +318,37 @@ const confirmApply = async () => {
             lettre_motivation: lettreMotivation.value
         });
 
-        displayToast(response.data.message || "Candidature envoyée avec succès !", 'success');
         nombreCandidatures.value++;
-        hasApplied.value = true; // <-- Mis à jour à true immédiatement après succès de la candidature
-        if (motivationModal) motivationModal.hide();
+        hasApplied.value = true;
+        pendingToast.value = { message: response.data.message || "Candidature envoyée avec succès !", type: 'success' };
+        
+        if (motivationModalInstance) {
+            console.log('Tentative de cacher la modale après succès. Instance :', motivationModalInstance);
+            motivationModalInstance.hide(); 
+        }
 
     } catch (err) {
         console.error('Erreur lors de l\'envoi de la candidature :', err.response ? err.response.data : err.message);
         if (err.response && err.response.data) {
             if (err.response.data.message) {
-                displayToast(err.response.data.message, 'danger');
-            } else if (err.response.data.errors && err.response.data.errors.lettre_motivation) { // Utilisez err.response.data.errors
+                pendingToast.value = { message: err.response.data.message, type: 'danger' };
+            } else if (err.response.data.errors && err.response.data.errors.lettre_motivation) {
                 motivationLetterError.value = err.response.data.errors.lettre_motivation[0];
-                displayToast("Erreur de validation: " + err.response.data.errors.lettre_motivation[0], 'danger');
+                pendingToast.value = { message: "Erreur de validation: " + err.response.data.errors.lettre_motivation[0], type: 'danger' };
             } else {
-                displayToast("Une erreur est survenue lors de l'envoi de votre candidature.", 'danger');
+                pendingToast.value = { message: "Une erreur est survenue lors de l'envoi de votre candidature.", type: 'danger' };
             }
         } else {
-            displayToast("Une erreur réseau est survenue lors de l'envoi de votre candidature.", 'danger');
+            pendingToast.value = { message: "Une erreur réseau est survenue lors de l'envoi de votre candidature.", type: 'danger' };
         }
+        
+        if (motivationModalInstance && !motivationLetterError.value) {
+            console.log('Tentative de cacher la modale après échec. Instance :', motivationModalInstance);
+            motivationModalInstance.hide();
+        } else if (motivationModalInstance) {
+             pendingToast.value = null;
+        }
+
     } finally {
         applying.value = false;
     }
@@ -338,16 +359,15 @@ const displayToast = (message, type = 'success') => {
   toastMessage.value = message;
   toastType.value = type;
   const toastEl = document.getElementById('liveToast');
-  if (toastEl && window.bootstrap && window.bootstrap.Toast) {
-    const toast = new window.bootstrap.Toast(toastEl, { delay: 3000 });
+  if (toastEl) {
+    const toast = new Toast(toastEl, { delay: 3000 });
     toast.show();
   }
 };
 
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
-  // Assurez-vous que la date est au format YYYY-MM-DD pour une création correcte de Date
-  const cleanDateString = dateString.split('T')[0]; 
+  const cleanDateString = dateString.split('T')[0];
   const options = { year: 'numeric', month: 'long', day: 'numeric' };
   try {
     return new Date(cleanDateString).toLocaleDateString('fr-FR', options);
@@ -359,31 +379,29 @@ const formatDate = (dateString) => {
 
 const isExpired = (expirationDate) => {
   if (!expirationDate) return true;
-  // Assurez-vous que la date est au format YYYY-MM-DD pour une création correcte de Date
   const cleanDateString = expirationDate.split('T')[0];
   try {
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Réinitialiser l'heure pour comparer seulement la date
+    today.setHours(0, 0, 0, 0);
     return new Date(cleanDateString) < today;
   } catch (e) {
     console.error('Erreur lors de la vérification de l\'expiration de la date:', expirationDate, e);
-    return true; // En cas d'erreur de format, considérer comme expiré
+    return true;
   }
 };
 
 const getDisplayStatus = (statut, expirationDate) => {
-  // Le statut 'expiree' du backend prime, sinon on vérifie la date d'expiration
   if (statut === 'expiree' || isExpired(expirationDate)) {
     return 'Expirée';
   }
-  return 'Disponible'; // Si statut est 'active' et non expirée
+  return 'Disponible';
 };
 
 const getStatusBadgeClass = (statut, expirationDate) => {
   if (statut === 'expiree' || isExpired(expirationDate)) {
     return 'bg-danger text-white';
   }
-  return 'bg-success text-white'; // Si statut est 'active' et non expirée
+  return 'bg-success text-white';
 };
 
 const goBack = () => {
@@ -392,27 +410,41 @@ const goBack = () => {
 
 // --- Hooks de Cycle de Vie ---
 onMounted(() => {
-  if (route.params.id) {
-    fetchOfferDetails(route.params.id);
+  if (props.id) {
+    fetchOfferDetails(props.id);
   } else {
     error.value = "Aucun ID d'offre n'a été fourni dans l'URL pour afficher les détails.";
     loading.value = false;
   }
-  // S'assurer que Bootstrap est chargé pour initialiser la modale
+  
   const modalElement = document.getElementById('motivationLetterModal');
   if (modalElement) {
-      modalElement.addEventListener('hidden.bs.modal', () => {
-          motivationLetterError.value = ''; // Réinitialiser l'erreur quand la modale est fermée
-          // Si motivationModal est une instance, la détruire pour éviter les fuites de mémoire
-          if (motivationModal) {
-              motivationModal.dispose();
-              motivationModal = null;
-          }
-      });
+    modalElement.addEventListener('hidden.bs.modal', () => {
+      motivationLetterError.value = '';
+      if (motivationModalInstance) {
+        console.log('Modale cachée, disposition de l\'instance :', motivationModalInstance);
+        motivationModalInstance.dispose();
+        motivationModalInstance = null; // Réinitialise la référence
+      }
+      // Affiche le toast UNIQUEMENT APRÈS la fermeture complète de la modale
+      if (pendingToast.value) {
+        displayToast(pendingToast.value.message, pendingToast.value.type);
+        pendingToast.value = null; // Réinitialise le toast en attente
+      }
+
+      // *** ADAPTATION DE LA LOGIQUE DE MESOFFRES.VUE ***
+      // Supprime tous les backdrops et la classe modal-open du body
+      const backdrops = document.querySelectorAll('.modal-backdrop');
+      backdrops.forEach(backdrop => backdrop.remove());
+      document.body.classList.remove('modal-open');
+      document.body.style.removeProperty('overflow');
+      document.body.style.removeProperty('padding-right');
+      // Fin de l'adaptation
+    });
   }
 });
 
-watch(() => route.params.id, (newId) => {
+watch(() => props.id, (newId) => {
   if (newId) {
     fetchOfferDetails(newId);
   } else {
@@ -431,7 +463,7 @@ watch(() => route.params.id, (newId) => {
   --secondary-text: #6c757d;
   --border-color: #dee2e6;
   --info-blue: #0dcaf0;
-  --danger-color: #dc3545; /* Ajout de la variable danger-color */
+  --danger-color: #dc3545;
 }
 
 .content-page {
@@ -453,10 +485,10 @@ watch(() => route.params.id, (newId) => {
 
 /* Nouvel ajout pour le conteneur du titre de l'offre */
 .offer-title-container {
-  background-color: rgba(13, 110, 253, 0.1); /* Bleu transparent */
+  background-color: rgba(13, 110, 253, 0.1);
   padding: 15px 20px;
   border-radius: 8px;
-  margin-bottom: 20px; /* Ajoute un peu d'espace en dessous */
+  margin-bottom: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -464,12 +496,11 @@ watch(() => route.params.id, (newId) => {
 
 /* Ajustement pour le titre de l'offre à l'intérieur de son conteneur */
 .offer-title {
-  color: var(--dark-text) !important; /* Couleur du texte noir */
-  margin-bottom: 0; /* Supprime la marge par défaut si elle existe */
-  font-weight: 600; /* Peut-être un peu plus gras pour se démarquer */
-  flex-grow: 1; /* Permet au titre de prendre l'espace disponible */
+  color: var(--dark-text) !important;
+  margin-bottom: 0;
+  font-weight: 600;
+  flex-grow: 1;
 }
-
 
 .status-badge {
   padding: 0.5em 0.9em;
@@ -512,20 +543,20 @@ watch(() => route.params.id, (newId) => {
 .text-primary { color: #0d6efd !important; }
 
 .btn-primary {
-  transition: all 0.3s ease; /* Transition douce pour le survol */
-  padding: 0.75rem 1.5rem; /* Augmente la taille du bouton */
-  font-size: 1.1rem; /* Texte un peu plus grand */
+  transition: all 0.3s ease;
+  padding: 0.75rem 1.5rem;
+  font-size: 1.1rem;
   font-weight: 600;
-  border-radius: 0.5rem; /* Bords plus arrondis */
+  border-radius: 0.5rem;
 }
 .btn-primary:hover {
-  background-color: #0056b3; /* Bleu plus foncé au survol */
+  background-color: #0056b3;
   border-color: #0056b3;
-  transform: translateY(-2px); /* Léger soulèvement */
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Ombre au survol */
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 .btn-primary:disabled {
-  background-color: #6c757d; /* Gris pour désactivé */
+  background-color: #6c757d;
   border-color: #6c757d;
   cursor: not-allowed;
   transform: none;
