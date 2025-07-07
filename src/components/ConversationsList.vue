@@ -20,8 +20,7 @@
 
           <div class="overflow-auto" style="height: calc(100% - 70px);">
             <div v-if="loadingConversations">
-              <!--Chargement des conversations...-->
-            </div>
+              </div>
             <div v-else-if="searchTerm && filteredConversations.length === 0">
                 <div v-if="searchingUsers" class="text-center p-4 text-muted">
                     Recherche d'utilisateurs...
@@ -115,7 +114,7 @@
 
 <script setup>
 import { ref, onMounted, computed, watch, onBeforeUnmount } from 'vue';
-import axios from 'axios';
+import axios from '../axios'; 
 import { useRoute, useRouter } from 'vue-router';
 import moment from 'moment';
 import 'moment/locale/fr';
@@ -132,8 +131,8 @@ const conversations = ref([]);
 const currentUser = ref({ id: null, name: 'Vous', photo: null, is_online: false, role: null });
 const selectedConversationUserId = ref(null);
 const searchTerm = ref('');
-const searchResults = ref([]); // Pour stocker les résultats de la recherche d'utilisateurs
-const searchingUsers = ref(false); // Pour indiquer si une recherche d'utilisateurs est en cours
+const searchResults = ref([]); 
+const searchingUsers = ref(false); 
 
 const loadingConversations = ref(true);
 const messageError = ref(null);
@@ -182,12 +181,7 @@ const fetchConversations = async () => {
   loadingConversations.value = true;
   try {
     const response = await axios.get('/api/messages');
-    const newConversations = response.data;
-
-    conversations.value = newConversations; // Met à jour la liste des conversations
-
-    // La ligne problématique qui réinitialisait selectedConversationUserId a déjà été supprimée
-    // dans les versions précédentes pour assurer la permanence de la sélection.
+    conversations.value = response.data;
 
   } catch (error) {
     console.error("Erreur lors de la récupération des conversations:", error);
@@ -217,7 +211,6 @@ const searchUsers = async () => {
     searchingUsers.value = false;
   }
 };
-
 
 // --- Fonctions utilitaires d'affichage et de navigation ---
 const selectConversation = (userId, isNew = false) => {
@@ -264,20 +257,14 @@ const getProfilePhoto = (photoUrl) => {
 // Surveille les changements de l'ID utilisateur dans l'URL.
 watch(() => route.params.userId, (newUserId) => {
   selectedConversationUserId.value = newUserId ? parseInt(newUserId) : null;
-}, { immediate: true }); // Exécute immédiatement au montage du composant
-
-// --- LOGIQUE DE SÉLECTION AUTOMATIQUE DÉSACTIVÉE ---
-// Le watcher suivant est celui qui était responsable de la sélection automatique.
-// Nous le commentons ou le supprimons pour désactiver ce comportement.
-/*
-watch(filteredConversations, (newConversations) => {
-  if (!selectedConversationUserId.value && currentUser.value.id && newConversations.length > 0) {
-    selectConversation(newConversations[0].participant.id);
+  if (selectedConversationUserId.value) {
+    // Trouver la conversation sélectionnée et mettre son compteur à zéro localement
+    const conversation = conversations.value.find(conv => conv.participant.id === selectedConversationUserId.value);
+    if (conversation) {
+      conversation.unread_count = 0; // Mettre le compteur à zéro localement
+    }
   }
-}, { immediate: true });
-*/
-// --- FIN DE LA LOGIQUE DE SÉLECTION AUTOMATIQUE DÉSACTIVÉE ---
-
+}, { immediate: true }); 
 
 // Surveille le terme de recherche pour déclencher la recherche d'utilisateurs
 watch(searchTerm, (newVal) => {
@@ -291,10 +278,12 @@ watch(searchTerm, (newVal) => {
 
 // --- Gestion des intervalles de rafraîchissement ---
 let conversationPollingInterval = null;
+const POLLING_INTERVAL_MS = 3000; // 3 secondes
 
 const startPollingConversations = () => {
   if (!conversationPollingInterval) {
-    conversationPollingInterval = setInterval(fetchConversations, 10000);
+    conversationPollingInterval = setInterval(fetchConversations, POLLING_INTERVAL_MS);
+    console.log(`Démarrage du rafraîchissement des conversations toutes les ${POLLING_INTERVAL_MS / 1000} secondes.`);
   }
 };
 
@@ -302,11 +291,16 @@ const stopPollingConversations = () => {
   if (conversationPollingInterval) {
     clearInterval(conversationPollingInterval);
     conversationPollingInterval = null;
+    console.log('Arrêt du rafraîchissement des conversations.');
   }
 };
 
 // --- Gestion des événements du composant enfant ---
 const handleMessagesRead = () => {
+    // Cette fonction est appelée par ConversationDetail lorsque des messages sont lus.
+    // Cela déclenche un rafraîchissement des conversations pour mettre à jour les compteurs.
+    // Si la fonction markMessagesAsRead n'est pas utilisée, cette ligne peut être moins pertinente
+    // à moins que ConversationDetail n'ait sa propre logique pour marquer les messages comme lus.
     fetchConversations();
 };
 
@@ -315,20 +309,12 @@ onMounted(async () => {
   await fetchCurrentUser();
   await fetchConversations();
 
-  // Si vous voulez une sélection automatique seulement lors du premier chargement
-  // et non à chaque mise à jour de filteredConversations, vous pouvez la mettre ici.
-  // Cependant, si vous la supprimez complètement, aucune sélection automatique n'aura lieu.
-  // Exemple si vous vouliez une sélection automatique au premier chargement SEULEMENT:
-  /*
-  if (!selectedConversationUserId.value && currentUser.value.id && sortedConversations.value.length > 0) {
-    selectConversation(sortedConversations.value[0].participant.id);
-  }
-  */
-
+  // Démarrer l'intervalle de rafraîchissement
   startPollingConversations();
 });
 
 onBeforeUnmount(() => {
+  // Nettoyer l'intervalle avant que le composant ne soit détruit
   stopPollingConversations();
 });
 </script>
@@ -350,5 +336,10 @@ onBeforeUnmount(() => {
 
 .input-group .form-control.border-0.focus-ring {
   box-shadow: none !important;
+}
+
+/* Styles pour le hover sur les éléments de conversation */
+.hover-bg-light:hover {
+  background-color: #e2e6ea; /* Une couleur un peu plus foncée pour le hover */
 }
 </style>

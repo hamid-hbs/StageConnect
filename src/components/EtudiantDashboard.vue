@@ -12,9 +12,6 @@
         <router-link to="/accueil-user" class="nav-link">
           <i class="fas fa-home icon-spacing-navbar"></i> Accueil
         </router-link>
-        <!--<router-link to="/communaute" class="nav-link">
-          <i class="fas fa-users icon-spacing-navbar"></i> Communautés
-        </router-link>-->
         <router-link to="/etudiant-dashboard" class="nav-link">
           <img :src="displayedDashboardPhoto" class="user-logo"/> Vous
         </router-link>
@@ -69,15 +66,16 @@
 
 <script setup>
 import { useRouter } from 'vue-router';
-import { ref, computed, onMounted, provide } from 'vue'; // Importe 'provide'
-import axios from '../axios'; // Assurez-vous que le chemin est correct pour votre instance Axios
+import { ref, computed, onMounted, onUnmounted, provide } from 'vue'; // Ajout de 'onUnmounted'
+import axios from '../axios'; 
 
 const router = useRouter();
 
 // --- Variables Réactives ---
 const photo = ref('');
 const isLoadingDashboard = ref(true);
-const unreadNotificationsCount = ref(0); // Nouvelle variable pour le compteur de notifications non lues
+const unreadNotificationsCount = ref(0); 
+let refreshIntervalId = null; // Pour stocker l'ID de l'intervalle
 
 // --- Propriété Calculée pour la Photo (avec cache busting) ---
 const displayedDashboardPhoto = computed(() => {
@@ -98,45 +96,62 @@ const signOut = () => {
 // --- Fonction pour récupérer le nombre de notifications non lues ---
 const fetchUnreadNotificationsCount = async () => {
   try {
-    // L'URL DOIT correspondre à votre route Laravel exacte : GET /api/notifications/unread/count
     const response = await axios.get('/api/notifications/unread/count');
-    // La réponse attendue est { "count": X }
     unreadNotificationsCount.value = response.data.count;
-    console.log('Notifications non lues mises à jour:', unreadNotificationsCount.value);
+    console.log('Notifications non lues mises à jour (Etudiant):', unreadNotificationsCount.value);
   } catch (error) {
-    console.error('Erreur lors du chargement du nombre de notifications non lues:', error.response ? error.response.data : error.message);
+    console.error('Erreur lors du chargement du nombre de notifications non lues (Etudiant):', error.response ? error.response.data : error.message);
     unreadNotificationsCount.value = 0;
   }
 };
+
+// --- Fonction pour récupérer les données du profil (y compris la photo) ---
+const fetchProfileData = async () => {
+    try {
+        const userResponse = await axios.get('/api/user/getProfile');
+        const user = userResponse.data;
+        if (user) {
+            photo.value = user.photo;
+            console.log('Photo de profil mise à jour (Etudiant):', photo.value);
+        }
+    } catch (error) {
+        console.error('Erreur lors du chargement du profil utilisateur (Etudiant):', error.response ? error.response.data : error.message);
+        photo.value = ''; // Réinitialiser la photo en cas d'erreur
+    }
+};
+
 
 // --- Cycle de vie du composant ---
 onMounted(async () => {
   try {
     isLoadingDashboard.value = true;
-     
-
-    const userResponse = await axios.get('/api/user/getProfile');
-    const user = userResponse.data;
-
-    if (user) {
-      photo.value = user.photo;
-    }
-
-    // Appel initial pour obtenir le nombre de notifications non lues
+      
+    // Appel initial pour la photo et les notifications
+    await fetchProfileData();
     await fetchUnreadNotificationsCount();
 
-    // Optionnel : Rafraîchir le compteur périodiquement (par exemple, toutes les 60 secondes)
-    // setInterval(fetchUnreadNotificationsCount, 60000); 
-
   } catch (error) {
-    console.error('Erreur lors du chargement initial:', error);
+    console.error('Erreur lors du chargement initial (Etudiant):', error);
   } finally {
     isLoadingDashboard.value = false;
+  }
+
+  // Mettre en place l'intervalle de rafraîchissement (3 secondes = 3000 ms)
+  refreshIntervalId = setInterval(async () => {
+    await fetchProfileData(); // Pour la photo
+    await fetchUnreadNotificationsCount(); // Pour les notifications
+  }, 3000); // 3000 ms = 3 secondes
+});
+
+// --- Nettoyage de l'intervalle au démontage du composant ---
+onUnmounted(() => {
+  if (refreshIntervalId) {
+    clearInterval(refreshIntervalId);
+    console.log('Intervalle de rafraîchissement nettoyé (Etudiant).');
   }
 });
 
 // Exposer la fonction pour les composants enfants (notamment la page Notifications)
-// Cela permet à un composant enfant d'appeler cette fonction pour rafraîchir le compteur
 provide('refreshUnreadNotifications', fetchUnreadNotificationsCount);
 
 </script>
@@ -172,6 +187,7 @@ provide('refreshUnreadNotifications', fetchUnreadNotificationsCount);
   flex-shrink: 0;
   border: 4px;
   margin-right: 5px;
+  object-fit: cover; /* Assure que l'image couvre bien la zone sans être déformée */
 }
 
 /* Navbar fixe */
