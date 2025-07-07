@@ -16,7 +16,7 @@
           <img :src="displayedDashboardPhoto" class="user-logo"/> Vous
         </router-link>
         
-          <button class="btn btn-outline-danger" @click.prevent="signOut" title="Déconnexion">
+          <button class="btn btn-outline-danger" @click.prevent="confirmSignOut" title="Déconnexion">
           <i class="fa-solid fa-right-from-bracket"></i>
           </button>
         
@@ -66,7 +66,7 @@
 
 <script setup>
 import { useRouter } from 'vue-router';
-import { ref, computed, onMounted, onUnmounted, provide } from 'vue'; // Ajout de 'onUnmounted'
+import { ref, computed, onMounted, onUnmounted, provide } from 'vue';
 import axios from '../axios'; 
 
 const router = useRouter();
@@ -75,7 +75,7 @@ const router = useRouter();
 const photo = ref('');
 const isLoadingDashboard = ref(true);
 const unreadNotificationsCount = ref(0); 
-let refreshIntervalId = null; // Pour stocker l'ID de l'intervalle
+let refreshIntervalId = null;
 
 // --- Propriété Calculée pour la Photo (avec cache busting) ---
 const displayedDashboardPhoto = computed(() => {
@@ -85,7 +85,14 @@ const displayedDashboardPhoto = computed(() => {
   return finalUrl.includes('?') ? finalUrl : `${finalUrl}?t=${Date.now()}`;
 });
 
-// --- Fonction pour gérer la déconnexion ---
+// --- Fonction pour demander confirmation avant la déconnexion ---
+const confirmSignOut = () => {
+  if (window.confirm('Êtes-vous sûr de vouloir vous déconnecter ?')) {
+    signOut();
+  }
+};
+
+// --- Fonction pour gérer la déconnexion (appelée après confirmation) ---
 const signOut = () => {
   console.log('Déconnexion en cours...');
   localStorage.removeItem('authToken');

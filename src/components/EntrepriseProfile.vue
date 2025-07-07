@@ -35,11 +35,7 @@
       <div class="profile-header d-flex align-items-start pb-4 mb-4 border-bottom">
         <div class="profile-avatar-placeholder me-4 position-relative">
           <img :src="displayedPhoto" :alt="`Profil de ${nom_entreprise}`" class="company-logo" />
-          <label for="profile-upload-input" class="edit-profile-icon position-absolute bg-primary text-white rounded-circle p-1 d-flex justify-content-center align-items-center cursor-pointer" :disabled="isUploadingPhoto">
-            <span v-if="isUploadingPhoto" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-            <i v-else class="fas fa-camera"></i>
-            <input type="file" id="profile-upload-input" class="d-none" @change="handleProfileUpload" accept="image/*" :disabled="isUploadingPhoto" />
-          </label>
+          
         </div>
         <div class="profile-info flex-grow-1">
           <h3 class="mb-1 fs-4 text-dark d-flex align-items-center">
@@ -49,6 +45,11 @@
           <p class="status-online fs-6 text-success d-flex align-items-center">
             <span class="dot bg-success me-1"></span> En ligne
           </p>
+          <label for="profile-upload-input" class="btn btn-sm btn-primary align-items-center cursor-pointer" :disabled="isUploadingPhoto">
+            <span v-if="isUploadingPhoto" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            <i v-else class="fas fa-camera me-2"></i> {{ isUploadingCover ? 'Chargement...' : 'Modifier la photo' }}
+            <input type="file" id="profile-upload-input" class="d-none" @change="handleProfileUpload" accept="image/*" :disabled="isUploadingPhoto" />
+          </label>
         </div>
       </div>
 
