@@ -91,12 +91,7 @@
                   <li class="mb-2"><i class="fas fa-check-circle text-primary me-2"></i> Gérez facilement vos candidatures</li>
                   <li class="mb-2"><i class="fas fa-check-circle text-primary me-2"></i> Suivez votre progression</li>
                 </ul>
-               <!-- <div class="text-center mt-auto">
-                   <router-link to="/communaute" class="btn btn-primary rounded-pill px-4 py-2">
-                    Explorer <i class="fas fa-arrow-right ms-2"></i>
-                  </router-link> 
-                </div> -->
-              </div>
+               </div>
             </div>
           </div>
 
@@ -114,12 +109,7 @@
                   <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Gérez les candidatures</li>
                   <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> Trouvez les talents de demain</li>
                 </ul>
-                <!-- <div class="text-center mt-auto">
-                   <router-link to="/entreprise-communaute" class="btn btn-success rounded-pill px-4 py-2">
-                    Explorer <i class="fas fa-arrow-right ms-2"></i>
-                  </router-link>
-                </div>  -->
-              </div>
+                </div>
             </div>
           </div>
         </div>
@@ -752,7 +742,8 @@ html {
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-height: 3.6em;
+  min-height: 3.6em; /* Assure une hauteur minimale pour 3 lignes (approximativement 1.2em * 3) */
+  -webkit-line-clamp: 3; /* Limite le texte à 3 lignes pour Webkit */
 }
 
 /* Responsive adjustments for offers section */
