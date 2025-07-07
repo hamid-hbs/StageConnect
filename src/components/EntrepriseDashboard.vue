@@ -11,9 +11,6 @@
         <router-link to="/accueil-user" class="nav-link">
           <i class="fas fa-home icon-spacing-navbar"></i> Accueil
         </router-link>
-        <!--<router-link to="/communaute" class="nav-link">
-          <i class="fas fa-users icon-spacing-navbar"></i> Communautés
-        </router-link>-->
         <router-link to="/entreprise-dashboard" class="nav-link">
           <img :src="displayedDashboardPhoto" class="user-logo"/> Vous
         </router-link>
@@ -66,81 +63,86 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'; // Importe useRouter de vue-router
-import { ref, computed, onMounted } from 'vue';
-import axios from '../axios'; // Assurez-vous que le chemin est correct pour votre instance Axios
+import { useRouter } from 'vue-router'; 
+import { ref, computed, onMounted, onUnmounted } from 'vue'; // Importez onUnmounted
+import axios from '../axios'; 
 
-const router = useRouter(); // Initialise le routeur
+const router = useRouter(); 
 
 // --- Variables Réactives ---
-const photo = ref(''); // URL de la photo de profil de l'utilisateur
-const isLoadingDashboard = ref(true); // Indique si les données du tableau de bord sont en cours de chargement
-const unreadNotificationsCount = ref(0); // Nouvelle variable pour le compteur de notifications non lues
+const photo = ref(''); 
+const isLoadingDashboard = ref(true); 
+const unreadNotificationsCount = ref(0); 
+let refreshIntervalId = null; // Pour stocker l'ID de l'intervalle
 
 // --- Propriété Calculée pour la Photo (avec cache busting) ---
 const displayedDashboardPhoto = computed(() => {
   const url = photo.value;
-  // Utilisez une image par défaut si 'photo.value' est vide
-  // Par exemple, si vous avez une image par défaut dans public/images/default-user.png
   const defaultPhoto = '/images/default-user.png'; // <-- VÉRIFIEZ OU REMPLACEZ VOTRE CHEMIN PAR DÉFAUT
-  const finalUrl = url || defaultPhoto; // Utilise la photo de l'utilisateur ou la photo par défaut
+  const finalUrl = url || defaultPhoto; 
 
   // Ajoute un horodatage pour forcer le navigateur à recharger l'image si elle change
+  // Ceci est important pour les cas où l'image sur le serveur est mise à jour mais le nom de fichier reste le même
   return finalUrl.includes('?') ? finalUrl : `${finalUrl}?t=${Date.now()}`;
 });
 
 // --- Fonction pour gérer la déconnexion ---
 const signOut = () => {
   console.log('Déconnexion en cours...');
-  // --- Logique réelle de déconnexion ---
-  // Supprimez tout token d'authentification ou données de session du stockage local
   localStorage.removeItem('authToken');
   sessionStorage.removeItem('userData');
-
-  // Redirigez l'utilisateur vers la page de connexion ou la page d'accueil
-  router.push('/'); // Redirige vers la page de connexion (vous pouvez la changer en '/')
+  router.push('/'); 
 };
 
 // --- Fonction pour récupérer le nombre de notifications non lues ---
 const fetchUnreadNotificationsCount = async () => {
   try {
-    // L'URL DOIT correspondre à votre route Laravel exacte, ici '/api/notifications/unread/count'
-    // basée sur votre route Laravel fournie dans la question précédente.
     const response = await axios.get('/api/notifications/unread/count');
-    // La réponse attendue est un JSON avec une clé 'count', par exemple : { "count": 5 }
     unreadNotificationsCount.value = response.data.count;
     console.log('Notifications non lues mises à jour:', unreadNotificationsCount.value);
   } catch (error) {
     console.error('Erreur lors du chargement du nombre de notifications non lues:', error.response ? error.response.data : error.message);
-    unreadNotificationsCount.value = 0; // Réinitialiser en cas d'erreur
+    unreadNotificationsCount.value = 0; 
   }
+};
+
+// --- Fonction pour récupérer les données du profil (y compris la photo) ---
+const fetchProfileData = async () => {
+    try {
+        const userResponse = await axios.get('/api/user/getProfile');
+        const user = userResponse.data;
+        if (user) {
+            photo.value = user.photo;
+            console.log('Photo de profil mise à jour:', photo.value);
+        }
+    } catch (error) {
+        console.error('Erreur lors du chargement du profil utilisateur:', error.response ? error.response.data : error.message);
+        photo.value = ''; // Réinitialiser la photo en cas d'erreur
+    }
 };
 
 // --- Chargement des données au montage du composant ---
 onMounted(async () => {
-  try {
-    isLoadingDashboard.value = true;
-     
+  isLoadingDashboard.value = true;
+  
+  // Exécuter les fonctions une première fois au montage
+  await fetchProfileData();
+  await fetchUnreadNotificationsCount();
 
-    const userResponse = await axios.get('/api/user/getProfile');
-    const user = userResponse.data;
+  isLoadingDashboard.value = false;
 
-    // Met à jour les variables réactives avec les données du profil
-    if (user) {
-      photo.value = user.photo ;
-    }
+  // Mettre en place l'intervalle de rafraîchissement (3 secondes = 3000 ms)
+  refreshIntervalId = setInterval(async () => {
+    await fetchProfileData(); // Pour la photo
+    await fetchUnreadNotificationsCount(); // Pour les notifications
+  }, 3000); // 3000 ms = 3 secondes
+});
 
-    // Appel pour obtenir le nombre de notifications non lues
-    await fetchUnreadNotificationsCount();
-
-    // Optionnel : Rafraîchir le compteur périodiquement (par exemple, toutes les 60 secondes)
-    // setInterval(fetchUnreadNotificationsCount, 60000); 
-
-  } catch (error) {
-    console.error('Erreur lors du chargement:', error);
-    // Gérer l'erreur, par exemple afficher un message à l'utilisateur
-  } finally {
-    isLoadingDashboard.value = false;
+// --- Nettoyage de l'intervalle au démontage du composant ---
+onUnmounted(() => {
+  if (refreshIntervalId) {
+    clearInterval(refreshIntervalId);
+    console.log('Intervalle de rafraîchissement nettoyé.');
   }
 });
 </script>
@@ -177,6 +179,7 @@ onMounted(async () => {
   flex-shrink: 0;
   border: 4px;
   margin-right: 5px;
+  object-fit: cover; /* Assure que l'image couvre bien la zone sans être déformée */
 }
 
 /* Navbar fixe */
