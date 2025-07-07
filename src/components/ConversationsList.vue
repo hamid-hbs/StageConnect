@@ -91,7 +91,7 @@
                   {{ conv.last_message ? (conv.last_message.expediteur_id === currentUser.id ? 'Moi: ' : '') + truncateText(conv.last_message.contenu, 25) : 'Pas de messages' }}
                 </p>
               </div>
-              <span v-if="conv.unread_count > 0" class="badge bg-primary rounded-pill ms-2">
+              <span v-if="selectedConversationUserId !== conv.participant.id && conv.unread_count > 0" class="badge bg-primary rounded-pill ms-2">
                 {{ conv.unread_count }}
               </span>
             </div>
@@ -104,7 +104,7 @@
             :current-user="currentUser"
             @messages-read="handleMessagesRead"
             @conversation-updated="fetchConversations"
-            :conversations-list="conversations"
+            @message-sent="handleMessageSent" :conversations-list="conversations"
           />
         </div>
       </div>
@@ -113,7 +113,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch, onBeforeUnmount } from 'vue';
+import { ref, onMounted, computed, watch, onBeforeUnmount, inject } from 'vue'; // Ajout de 'inject'
 import axios from '../axios'; 
 import { useRoute, useRouter } from 'vue-router';
 import moment from 'moment';
@@ -125,6 +125,7 @@ moment.locale('fr');
 
 const route = useRoute();
 const router = useRouter();
+const refreshUnreadNotificationsLayout = inject('refreshUnreadNotifications', () => {}); // Récupère la fonction du layout parent
 
 // --- Données réactives ---
 const conversations = ref([]);
@@ -183,6 +184,14 @@ const fetchConversations = async () => {
     const response = await axios.get('/api/messages');
     conversations.value = response.data;
 
+    // Assurez-vous que la conversation actuellement sélectionnée a 0 messages non lus localement
+    if (selectedConversationUserId.value) {
+        const selectedConv = conversations.value.find(conv => conv.participant.id === selectedConversationUserId.value);
+        if (selectedConv) {
+            selectedConv.unread_count = 0; // Force à 0 pour la conversation active
+        }
+    }
+
   } catch (error) {
     console.error("Erreur lors de la récupération des conversations:", error);
     messageError.value = "Impossible de charger les conversations.";
@@ -212,11 +221,34 @@ const searchUsers = async () => {
   }
 };
 
+// Fonction pour marquer les messages comme lus (côté backend)
+const markMessagesAsRead = async (conversationId) => {
+    if (!conversationId) return;
+    try {
+        await axios.post(`/api/messages/${conversationId}/mark-as-read`);
+        console.log(`Conversation ${conversationId} marquée comme lue sur le backend.`);
+        // Rafraîchir le compteur global de notifications dans le layout parent
+        refreshUnreadNotificationsLayout(); 
+    } catch (error) {
+        console.error("Erreur lors du marquage des messages comme lus sur le backend:", error);
+    }
+};
+
+
 // --- Fonctions utilitaires d'affichage et de navigation ---
-const selectConversation = (userId, isNew = false) => {
+const selectConversation = async (userId, isNew = false) => {
   if (selectedConversationUserId.value !== userId) {
     selectedConversationUserId.value = userId;
     router.push({ params: { userId: userId } });
+
+    // Trouver la conversation et la marquer comme lue côté backend ET localement
+    const conversation = conversations.value.find(conv => conv.participant.id === selectedConversationUserId.value);
+    if (conversation) {
+      if (conversation.unread_count > 0) {
+        conversation.unread_count = 0; // Mettre à zéro localement immédiatement
+        await markMessagesAsRead(conversation.id); // Notifier le backend
+      }
+    }
 
     if (isNew) {
       searchTerm.value = '';
@@ -255,13 +287,14 @@ const getProfilePhoto = (photoUrl) => {
 
 // --- Watchers ---
 // Surveille les changements de l'ID utilisateur dans l'URL.
-watch(() => route.params.userId, (newUserId) => {
+watch(() => route.params.userId, async (newUserId) => {
   selectedConversationUserId.value = newUserId ? parseInt(newUserId) : null;
   if (selectedConversationUserId.value) {
-    // Trouver la conversation sélectionnée et mettre son compteur à zéro localement
+    // Re-appliquer le marquage lu si l'URL change alors que le composant est monté
     const conversation = conversations.value.find(conv => conv.participant.id === selectedConversationUserId.value);
-    if (conversation) {
-      conversation.unread_count = 0; // Mettre le compteur à zéro localement
+    if (conversation && conversation.unread_count > 0) {
+      conversation.unread_count = 0; // Mettre à zéro localement
+      await markMessagesAsRead(conversation.id); // Notifier le backend
     }
   }
 }, { immediate: true }); 
@@ -299,9 +332,17 @@ const stopPollingConversations = () => {
 const handleMessagesRead = () => {
     // Cette fonction est appelée par ConversationDetail lorsque des messages sont lus.
     // Cela déclenche un rafraîchissement des conversations pour mettre à jour les compteurs.
-    // Si la fonction markMessagesAsRead n'est pas utilisée, cette ligne peut être moins pertinente
-    // à moins que ConversationDetail n'ait sa propre logique pour marquer les messages comme lus.
     fetchConversations();
+};
+
+const handleMessageSent = async (conversationId) => {
+    // Lorsque l'utilisateur envoie un message, assurez-vous que le compteur est à zéro
+    // pour cette conversation et rafraîchissez pour refléter les derniers messages.
+    const conversation = conversations.value.find(conv => conv.id === conversationId);
+    if (conversation) {
+        conversation.unread_count = 0; // Mettre à zéro localement
+    }
+    await fetchConversations(); // Rafraîchir pour obtenir le dernier message et trier
 };
 
 // --- Cycle de vie du composant ---
