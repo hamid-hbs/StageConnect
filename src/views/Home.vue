@@ -171,7 +171,19 @@
               <h6 class="card-subtitle mb-2 text-muted">
                   <span class="fw-bold text-primary">{{ offer.entreprise.nom_entreprise }}</span> - {{ offer.domaine.libdomaine }}
               </h6>
-              <p class="card-text text-truncate-3">{{ offer.description }}</p>
+              <p 
+                class="card-text" 
+                :class="{ 'text-truncate-3': !offer.showFullDescription }"
+              >
+                {{ offer.description }}
+              </p>
+              <button 
+                v-if="offer.description.length > 150" 
+                @click="toggleDescription(offer)" 
+                class="btn btn-link p-0 text-primary mb-2 text-decoration-none"
+              >
+                {{ offer.showFullDescription ? 'Voir moins' : 'Voir plus' }}
+              </button>
               <ul class="list-unstyled offer-details">
                 <li><i class="fas fa-map-marker-alt me-2 text-secondary"></i> {{ offer.ville ? offer.ville.nom_ville : offer.adresse }}</li>
                 <li><i class="fas fa-calendar-alt me-2 text-secondary"></i> {{ offer.duree_en_semaines }} semaines</li>
@@ -359,13 +371,22 @@ export default {
       // Cette fonction est là principalement pour les écouteurs @input
     };
 
+    // Nouvelle fonction pour basculer l'affichage complet de la description
+    const toggleDescription = (offer) => {
+      offer.showFullDescription = !offer.showFullDescription;
+    };
+
     onMounted(async () => {
       try {
         isLoadingOffers.value = true;
         errorMessageOffers.value = '';
 
         const offersResponse = await axios.get('/api/offres-off');
-        offers.value = offersResponse.data;
+        // Initialiser showFullDescription pour chaque offre
+        offers.value = offersResponse.data.map(offer => ({
+          ...offer,
+          showFullDescription: false // Par défaut, la description est tronquée
+        }));
 
         const domainesResponse = await axios.get('/api/domaines');
         domainesList.value = domainesResponse.data;
@@ -397,7 +418,8 @@ export default {
       filteredOffers,
       setFilterDomaine,
       applyFilters,
-      displayToastOffers
+      displayToastOffers,
+      toggleDescription // Exposer la fonction au template
     };
   },
   data() {
@@ -650,9 +672,6 @@ html {
   border-radius: 0.25rem;
 }
 
-/* Grille pour les 3 premières offres - supprimé */
-/* .offers-grid-initial { ... } */
-
 /* Conteneur pour le carrousel horizontal des offres restantes */
 .offers-carousel {
   display: flex;
@@ -719,12 +738,13 @@ html {
 .offer-card .card-text, .offer-card-carousel .card-text {
   font-size: 0.9rem;
   color: var(--dark-text);
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem; /* Réduit l'espace avant le bouton Voir plus */
 }
 
 .offer-details {
   font-size: 0.85rem;
   color: var(--secondary-text);
+  margin-top: 0.5rem; /* Ajoute un peu d'espace après le bouton Voir plus */
   margin-bottom: 1rem;
 }
 
@@ -758,7 +778,6 @@ html {
     margin-right: 0 !important;
     margin-bottom: 0.5rem;
   }
-  /* .offers-grid-initial { ... } - supprimé */
   .offer-card-carousel {
     flex: 0 0 280px;
     max-width: 280px;
