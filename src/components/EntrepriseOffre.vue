@@ -4,7 +4,8 @@
       <span style="text-decoration: underline; text-decoration-color: #0d6efd;">
         <h1 class="text-dark page-main-title mb-0">Nos offres</h1>
       </span>
-      <button class="btn btn-primary add-offer-page-btn" data-bs-toggle="modal" data-bs-target="#addOfferModal">Ajouter une offre</button>
+      <button class="btn btn-primary add-offer-page-btn" data-bs-toggle="modal" data-bs-target="#addOfferModal">
+        <i class="fas fa-plus me-2"></i>Ajouter une offre</button>
     </div>
 
     <section class="offers-summary p-4 rounded shadow-sm mb-4" style="background-color: rgba(91, 168, 245, 0.771);">
