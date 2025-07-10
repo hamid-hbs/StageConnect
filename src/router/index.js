@@ -51,6 +51,12 @@ import GenericProfileView from '../components/GenericProfileView.vue';
 //import CandidaturesDetails from '../components/CandidaturesDetails.vue';
 
 
+import AdminDashboard from '../components/AdminDashboard.vue';
+import GestUsers from '../components/GestUsers.vue';
+import GestFilieres from '../components/GestFilieres.vue';
+import GestEtablissements from '../components/GestEtablissements.vue';
+
+
 const routes = [
   { path: '/', component: Home },
   { path: '/select-role', component: SelectRole },
@@ -150,6 +156,30 @@ const routes = [
       { 
         path: ':type/:id/profile', // ':type' peut être 'etudiants', 'entreprises', 'etablissements'
         name: 'etudiant-generic-profile-view', 
+        component: GenericProfileView, 
+        props: true 
+      },
+    ]
+  },
+
+
+  // Dashboard Admin
+  { 
+    path: '/admin-dashboard', 
+    component: AdminDashboard,
+    children: [ 
+      {
+        path: '', 
+        name: 'admin-dashboard-default',
+        component: GestUsers
+      },
+      { path: '/gest-users', component: GestUsers, name: 'gest-users' },
+      { path: '/gest-filieres', component: GestFilieres, name: 'gest-filieres' }, 
+      { path: '/gest-etablissements', component: GestEtablissements, name: 'gest-etablissements' }, 
+      { path: 'offre-details/:id', component: OffreDetails, name: 'etudiant-offre-details', props: true},
+      { 
+        path: ':type/:id/profile', 
+        name: 'admin-generic-profile-view', 
         component: GenericProfileView, 
         props: true 
       },
