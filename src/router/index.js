@@ -55,6 +55,7 @@ import AdminDashboard from '../components/AdminDashboard.vue';
 import GestUsers from '../components/GestUsers.vue';
 import GestFilieres from '../components/GestFilieres.vue';
 import GestEtablissements from '../components/GestEtablissements.vue';
+import AdminProfileView from '../components/AdminProfileView.vue';
 
 
 const routes = [
@@ -178,9 +179,9 @@ const routes = [
       { path: '/gest-etablissements', component: GestEtablissements, name: 'gest-etablissements' }, 
       { path: 'offre-details/:id', component: OffreDetails, name: 'etudiant-offre-details', props: true},
       { 
-        path: ':type/:id/profile', 
-        name: 'admin-generic-profile-view', 
-        component: GenericProfileView, 
+        path: '/admin/users/:id', 
+        name: 'admin-profile-view', 
+        component: AdminProfileView, 
         props: true 
       },
     ]

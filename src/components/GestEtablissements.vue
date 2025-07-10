@@ -2,8 +2,15 @@
   <div class="container mt-4">
     <span style="text-decoration: underline; text-decoration-color: #0d6efd;"><h3 class="mb-4">Gestion des Établissements</h3></span>
 
-    <!-- Bouton pour ajouter un nouvel établissement -->
-    <div class="d-flex justify-content-end mb-3">
+    <!-- Bouton pour ajouter un nouvel établissement et barre de recherche -->
+    <div class="mb-3 d-flex justify-content-between align-items-center">
+      <input
+        type="text"
+        class="form-control w-25"
+        placeholder="Rechercher un établissement..."
+        v-model="searchQuery"
+      
+      />
       <button class="btn btn-primary" @click="openAddEtablissementModal">
         <i class="fas fa-plus me-2"></i> Ajouter un établissement
       </button>
@@ -21,8 +28,9 @@
       Erreur lors du chargement des établissements : {{ error }}
     </div>
 
-    <div v-else-if="etablissements.length === 0" class="alert alert-info" role="alert">
-      Aucun établissement trouvé pour le moment.
+    <!-- MODIFIED: Condition pour l'affichage "Aucun établissement trouvé" -->
+    <div v-else-if="filteredEtablissements.length === 0" class="alert alert-info" role="alert">
+      Aucun établissement trouvé correspondant à votre recherche.
     </div>
 
     <!-- Tableau des établissements -->
@@ -36,7 +44,8 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="etablissement in etablissements" :key="etablissement.id">
+          <!-- MODIFIED: Itérer sur filteredEtablissements au lieu de etablissements -->
+          <tr v-for="etablissement in filteredEtablissements" :key="etablissement.id">
             <th scope="row">{{ etablissement.id }}</th>
             <td>{{ etablissement.nom_etablissement }}</td>
             <td>
@@ -129,13 +138,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue'; // Added 'computed'
 import axios from '../axios'; // Assurez-vous que le chemin est correct
 import { Modal } from 'bootstrap'; // Importez la classe Modal de Bootstrap
 
-const etablissements = ref([]);
+const etablissements = ref([]); // Stores all etablissements fetched from the API
 const isLoading = ref(false);
 const error = ref(null);
+const searchQuery = ref(''); // NEW: Model for the search bar
 const isActionLoading = ref({}); // Pour gérer l'état de chargement par action/établissement
 
 // Pour la modale d'ajout/édition
@@ -150,20 +160,32 @@ const deleteEtablissementModalInstance = ref(null);
 const etablissementToDeleteId = ref(null);
 const etablissementToDeleteName = ref('');
 
+// NEW: Computed property for client-side filtering
+const filteredEtablissements = computed(() => {
+  if (!searchQuery.value) {
+    return etablissements.value; // If no search query, return all etablissements
+  }
+  const query = searchQuery.value.toLowerCase();
+  return etablissements.value.filter(etablissement => {
+    // Search by nom_etablissement
+    return etablissement.nom_etablissement && etablissement.nom_etablissement.toLowerCase().includes(query);
+  });
+});
+
 // Initialisation des modales Bootstrap au montage du composant
 onMounted(() => {
   etablissementModalInstance.value = new Modal(document.getElementById('etablissementModal'));
   deleteEtablissementModalInstance.value = new Modal(document.getElementById('deleteEtablissementModal'));
-  fetchEtablissements(); // Charger les établissements au démarrage
+  fetchEtablissements(); // Charger tous les établissements au démarrage
 });
 
-// Récupérer la liste des établissements
+// Récupérer la liste des établissements (maintenant sans paramètre de recherche)
 const fetchEtablissements = async () => {
   isLoading.value = true;
   error.value = null;
   try {
     const response = await axios.get('/api/admin/etablissements'); // Utilise la route de l'AdminController
-    etablissements.value = response.data;
+    etablissements.value = response.data; // Store all fetched etablissements
   } catch (err) {
     console.error('Erreur lors de la récupération des établissements:', err);
     error.value = err.response?.data?.message || 'Une erreur est survenue lors du chargement des établissements.';
@@ -201,7 +223,7 @@ const saveEtablissement = async () => {
     }
     alert(response.data.message); // Ou un système de toast
     etablissementModalInstance.value.hide();
-    fetchEtablissements(); // Recharger la liste après succès
+    fetchEtablissements(); // Recharger la liste après succès (pour que la recherche client soit à jour)
   } catch (err) {
     console.error('Erreur lors de l\'enregistrement de l\'établissement:', err);
     if (err.response && err.response.status === 422) {
@@ -233,7 +255,7 @@ const deleteEtablissement = async () => {
     const response = await axios.delete(`/api/admin/etablissements/${etablissementToDeleteId.value}`);
     alert(response.data.message);
     deleteEtablissementModalInstance.value.hide();
-    fetchEtablissements(); // Recharger la liste après suppression
+    fetchEtablissements(); // Recharger la liste après suppression (pour que la recherche client soit à jour)
   } catch (err) {
     console.error('Erreur lors de la suppression de l\'établissement:', err);
     alert('Erreur lors de la suppression : ' + (err.response?.data?.message || 'Une erreur est survenue.'));

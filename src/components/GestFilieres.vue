@@ -2,8 +2,15 @@
   <div class="container mt-4">
     <span style="text-decoration: underline; text-decoration-color: #0d6efd;"><h3 class="mb-4">Gestion des Filières</h3></span>
 
-    <!-- Bouton pour ajouter une nouvelle filière -->
-    <div class="d-flex justify-content-end mb-3">
+    <!-- Bouton pour ajouter une nouvelle filière et barre de recherche -->
+    <div class="mb-3 d-flex justify-content-between align-items-center">
+      <input
+        type="text"
+        class="form-control w-25"
+        placeholder="Rechercher une filière..."
+        v-model="searchQuery"
+        
+      />
       <button class="btn btn-primary" @click="openAddFiliereModal">
         <i class="fas fa-plus me-2"></i> Ajouter une filière
       </button>
@@ -21,8 +28,9 @@
       Erreur lors du chargement des filières : {{ error }}
     </div>
 
-    <div v-else-if="filieres.length === 0" class="alert alert-info" role="alert">
-      Aucune filière trouvée pour le moment.
+    <!-- MODIFIED: Condition pour l'affichage "Aucune filière trouvée" -->
+    <div v-else-if="filteredFilieres.length === 0" class="alert alert-info" role="alert">
+      Aucune filière trouvée correspondant à votre recherche.
     </div>
 
     <!-- Tableau des filières -->
@@ -36,7 +44,8 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="filiere in filieres" :key="filiere.id">
+          <!-- MODIFIED: Itérer sur filteredFilieres au lieu de filieres -->
+          <tr v-for="filiere in filteredFilieres" :key="filiere.id">
             <th scope="row">{{ filiere.id }}</th>
             <td>{{ filiere.libfil }}</td>
             <td>
@@ -129,13 +138,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue'; // Added 'computed'
 import axios from '../axios'; // Assurez-vous que le chemin est correct
 import { Modal } from 'bootstrap'; // Importez la classe Modal de Bootstrap
 
-const filieres = ref([]);
+const filieres = ref([]); // Stores all filieres fetched from the API
 const isLoading = ref(false);
 const error = ref(null);
+const searchQuery = ref(''); // NEW: Model for the search bar
 const isActionLoading = ref({}); // Pour gérer l'état de chargement par action/filière
 
 // Pour la modale d'ajout/édition
@@ -150,20 +160,32 @@ const deleteFiliereModalInstance = ref(null);
 const filiereToDeleteId = ref(null);
 const filiereToDeleteName = ref('');
 
+// NEW: Computed property for client-side filtering
+const filteredFilieres = computed(() => {
+  if (!searchQuery.value) {
+    return filieres.value; // If no search query, return all filieres
+  }
+  const query = searchQuery.value.toLowerCase();
+  return filieres.value.filter(filiere => {
+    // Search by libfil
+    return filiere.libfil && filiere.libfil.toLowerCase().includes(query);
+  });
+});
+
 // Initialisation des modales Bootstrap au montage du composant
 onMounted(() => {
   filiereModalInstance.value = new Modal(document.getElementById('filiereModal'));
   deleteFiliereModalInstance.value = new Modal(document.getElementById('deleteFiliereModal'));
-  fetchFilieres(); // Charger les filières au démarrage
+  fetchFilieres(); // Charger toutes les filières au démarrage
 });
 
-// Récupérer la liste des filières
+// Récupérer la liste des filières (maintenant sans paramètre de recherche)
 const fetchFilieres = async () => {
   isLoading.value = true;
   error.value = null;
   try {
     const response = await axios.get('/api/admin/filieres'); // Utilise la route de l'AdminController
-    filieres.value = response.data;
+    filieres.value = response.data; // Store all fetched filieres
   } catch (err) {
     console.error('Erreur lors de la récupération des filières:', err);
     error.value = err.response?.data?.message || 'Une erreur est survenue lors du chargement des filières.';
@@ -201,7 +223,7 @@ const saveFiliere = async () => {
     }
     alert(response.data.message); // Ou un système de toast
     filiereModalInstance.value.hide();
-    fetchFilieres(); // Recharger la liste après succès
+    fetchFilieres(); // Recharger la liste après succès (pour que la recherche client soit à jour)
   } catch (err) {
     console.error('Erreur lors de l\'enregistrement de la filière:', err);
     if (err.response && err.response.status === 422) {
@@ -233,7 +255,7 @@ const deleteFiliere = async () => {
     const response = await axios.delete(`/api/admin/filieres/${filiereToDeleteId.value}`);
     alert(response.data.message);
     deleteFiliereModalInstance.value.hide();
-    fetchFilieres(); // Recharger la liste après suppression
+    fetchFilieres(); // Recharger la liste après suppression (pour que la recherche client soit à jour)
   } catch (err) {
     console.error('Erreur lors de la suppression de la filière:', err);
     alert('Erreur lors de la suppression : ' + (err.response?.data?.message || 'Une erreur est survenue.'));
