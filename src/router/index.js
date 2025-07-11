@@ -177,7 +177,6 @@ const routes = [
       { path: '/gest-users', component: GestUsers, name: 'gest-users' },
       { path: '/gest-filieres', component: GestFilieres, name: 'gest-filieres' }, 
       { path: '/gest-etablissements', component: GestEtablissements, name: 'gest-etablissements' }, 
-      { path: 'offre-details/:id', component: OffreDetails, name: 'etudiant-offre-details', props: true},
       { 
         path: '/admin/users/:id', 
         name: 'admin-profile-view', 
