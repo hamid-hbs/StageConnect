@@ -1,36 +1,37 @@
 <template>
   <div>
-    <nav class="navbar">
-      <div class="navbar-brand">
-        <a class="navbar-brand text-primary fw-bold" href="#">
-          <img src="/toge.png" alt="StageConnect Logo" />
-          StageConnect
-        </a>
-      </div>
-      
-      <div class="navbar-links">
-        <router-link to="/accueil-user" class="nav-link">
-          <i class="fas fa-home icon-spacing-navbar"></i> Accueil
-        </router-link>
-        <router-link to="/etudiant-dashboard" class="nav-link">
-          <img :src="displayedDashboardPhoto" class="user-logo"/> Vous
-        </router-link>
-        
-          <button class="btn btn-outline-danger" @click.prevent="confirmSignOut" title="Déconnexion">
-          <i class="fa-solid fa-right-from-bracket"></i>
-          </button>
-        
-      </div>
-    </nav>
+    <div v-if="userIsActive">
+      <nav class="navbar">
+        <div class="navbar-brand">
+          <a class="navbar-brand text-primary fw-bold" href="#">
+            <img src="/toge.png" alt="StageConnect Logo" />
+            StageConnect
+          </a>
+        </div>
 
-    <aside class="sidebar">
-      <ul class="sidebar-menu">
-        <router-link to="/etudiant-profile" custom v-slot="{ href, navigate, isActive }">
+        <div class="navbar-links">
+          <router-link to="/accueil-user" class="nav-link">
+            <i class="fas fa-home icon-spacing-navbar"></i> Accueil
+          </router-link>
+          <router-link to="/etudiant-dashboard" class="nav-link">
+            <img :src="displayedDashboardPhoto" class="user-logo"/> Vous
+          </router-link>
+
+          <button class="btn btn-outline-danger" @click.prevent="confirmSignOut" title="Déconnexion">
+            <i class="fa-solid fa-right-from-bracket"></i>
+          </button>
+
+        </div>
+      </nav>
+
+      <aside class="sidebar">
+        <ul class="sidebar-menu">
+          <router-link to="/etudiant-profile" custom v-slot="{ href, navigate, isActive }">
             <li :class="{ 'active-button': isActive }">
               <a :href="href" @click="navigate"><i class="fas fa-user-graduate icon-spacing-sidebar"></i>Etudiant</a>
             </li>
           </router-link>
-        <router-link to="/etudiant-candidature" custom v-slot="{ href, navigate, isActive }">
+          <router-link to="/etudiant-candidature" custom v-slot="{ href, navigate, isActive }">
             <li :class="{ 'active-button': isActive }">
               <a :href="href" @click="navigate"><i class="fas fa-briefcase icon-spacing-sidebar"></i>Mes candidatures</a>
             </li>
@@ -56,26 +57,35 @@
             </li>
           </router-link>
         </ul>
-    </aside>
+      </aside>
 
-    <main class="main-content">
-      <router-view />
-    </main>
+      <main class="main-content">
+        <router-view />
+      </main>
+    </div>
+  <div v-else class="blank-page">
+    <div class="message-container">
+    <h2 class="message-title">Votre compte est désactivé</h2>
+    <p class="message-text">Pour plus d'informations, veuillez contacter l'administrateur.</p>
+    <button class="btn btn-primary mt-3" @click="signOut">Se déconnecter</button>
+  </div>
+</div>
   </div>
 </template>
 
 <script setup>
 import { useRouter } from 'vue-router';
 import { ref, computed, onMounted, onUnmounted, provide } from 'vue';
-import axios from '../axios'; 
+import axios from '../axios';
 
 const router = useRouter();
 
 // --- Variables Réactives ---
 const photo = ref('');
 const isLoadingDashboard = ref(true);
-const unreadNotificationsCount = ref(0); 
+const unreadNotificationsCount = ref(0);
 let refreshIntervalId = null;
+const userIsActive = ref(true); // Initialiser à true par défaut
 
 // --- Propriété Calculée pour la Photo (avec cache busting) ---
 const displayedDashboardPhoto = computed(() => {
@@ -112,18 +122,22 @@ const fetchUnreadNotificationsCount = async () => {
   }
 };
 
-// --- Fonction pour récupérer les données du profil (y compris la photo) ---
+// --- Fonction pour récupérer les données du profil (y compris la photo et is_active) ---
 const fetchProfileData = async () => {
     try {
         const userResponse = await axios.get('/api/user/getProfile');
         const user = userResponse.data;
         if (user) {
             photo.value = user.photo;
+            // Mettre à jour la variable userIsActive avec la valeur de is_active du profil
+            userIsActive.value = user.is_active === 1; // Assurez-vous que c'est bien 1 pour actif
             console.log('Photo de profil mise à jour (Etudiant):', photo.value);
+            console.log('Statut is_active (Etudiant):', user.is_active);
         }
     } catch (error) {
         console.error('Erreur lors du chargement du profil utilisateur (Etudiant):', error.response ? error.response.data : error.message);
         photo.value = ''; // Réinitialiser la photo en cas d'erreur
+        userIsActive.value = false; // Désactiver l'accès si le profil ne peut pas être chargé
     }
 };
 
@@ -132,10 +146,14 @@ const fetchProfileData = async () => {
 onMounted(async () => {
   try {
     isLoadingDashboard.value = true;
-      
-    // Appel initial pour la photo et les notifications
+
+    // Appel initial pour la photo, les notifications et le statut is_active
     await fetchProfileData();
-    await fetchUnreadNotificationsCount();
+    // Ne pas tenter de charger les notifications si l'utilisateur n'est pas actif
+    if (userIsActive.value) {
+      await fetchUnreadNotificationsCount();
+    }
+
 
   } catch (error) {
     console.error('Erreur lors du chargement initial (Etudiant):', error);
@@ -144,9 +162,12 @@ onMounted(async () => {
   }
 
   // Mettre en place l'intervalle de rafraîchissement (3 secondes = 3000 ms)
+  // L'intervalle doit aussi vérifier is_active
   refreshIntervalId = setInterval(async () => {
-    await fetchProfileData(); // Pour la photo
-    await fetchUnreadNotificationsCount(); // Pour les notifications
+    await fetchProfileData(); // Pour la photo et le statut is_active
+    if (userIsActive.value) { // Ne rafraîchir les notifications que si l'utilisateur est actif
+      await fetchUnreadNotificationsCount();
+    }
   }, 3000); // 3000 ms = 3 secondes
 });
 
@@ -164,6 +185,19 @@ provide('refreshUnreadNotifications', fetchUnreadNotificationsCount);
 </script>
 
 <style scoped>
+/* Ajoutez un style pour la page blanche */
+.blank-page {
+  width: 100vw;
+  height: 100vh;
+  background-color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2em;
+  color: #333;
+  /* Vous pouvez ajouter un message ici si vous le souhaitez */
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -389,16 +423,16 @@ provide('refreshUnreadNotifications', fetchUnreadNotificationsCount);
   .navbar-links {
     gap: 10px;
   }
-  
+
   .nav-link {
     padding: 6px 12px;
     font-size: 14px;
   }
-  
+
   .sidebar {
     width: 200px;
   }
-  
+
   .main-content {
     margin-left: 200px;
   }
@@ -408,26 +442,50 @@ provide('refreshUnreadNotifications', fetchUnreadNotificationsCount);
   .navbar {
     padding: 0 10px;
   }
-  
+
   .navbar-brand {
     font-size: 1.2rem;
   }
-  
+
   .navbar-brand img {
     height: 30px;
   }
-  
+
   .navbar-links {
     gap: 5px;
   }
-  
+
   .nav-link {
     padding: 4px 8px;
     font-size: 12px;
   }
-  
+
   .icon-spacing-navbar {
     margin-right: 3px;
   }
+}
+
+.message-container {
+  text-align: center;
+  padding: 30px;
+  border-radius: 10px;
+  background-color: #f8d7da; /* Couleur de fond légère pour un avertissement */
+  border: 1px solid #dc3545; /* Bordure rouge */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  margin: auto; /* Centre le conteneur horizontalement */
+}
+
+.message-title {
+  color: #dc3545; /* Texte rouge vif pour le titre */
+  margin-bottom: 15px;
+  font-size: 1.8em;
+}
+
+.message-text {
+  color: #6a0e1a; /* Couleur de texte plus foncée pour le corps du message */
+  font-size: 1.1em;
+  line-height: 1.5;
+  margin-bottom: 20px;
 }
 </style>

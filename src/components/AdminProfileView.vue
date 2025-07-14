@@ -109,6 +109,10 @@
             <!-- Condition basée sur profileData.role et présence de profileData.entreprise -->
             <template v-else-if="profileData.role === 'entreprise' && profileData.entreprise">
               <p class="mb-2 text-dark d-flex align-items-center">
+                <i class="fas fa-building  me-2 text-primary fs-5"></i><span class="fw-bold">RCCM(Registre du Commerce et du Crédit Mobilier) :</span>
+                {{ profileData.entreprise.RCCM || 'Non spécifié' }}
+              </p>
+              <p class="mb-2 text-dark d-flex align-items-center">
                 <i class="fas fa-industry me-2 text-primary fs-5"></i><span class="fw-bold">Domaine d'activité/Secteur :</span>
                 <!-- Accès via la relation imbriquée sur l'objet entreprise -->
                 {{ profileData.entreprise.domaine?.libdomaine || 'Non spécifié' }}
