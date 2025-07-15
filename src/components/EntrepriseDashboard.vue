@@ -131,7 +131,7 @@ const fetchProfileData = async () => {
         if (user) {
             photo.value = user.photo;
             // Mettre à jour la variable userIsActive avec la valeur de is_active du profil
-            userIsActive.value = user.is_active === 1; // Assurez-vous que c'est bien 1 pour actif
+            userIsActive.value = user.is_active == 1; // Assurez-vous que c'est bien 1 pour actif
             console.log('Photo de profil mise à jour (Entreprise):', photo.value);
             console.log('Statut is_active (Entreprise):', user.is_active);
         }
