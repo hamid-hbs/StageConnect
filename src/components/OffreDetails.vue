@@ -121,7 +121,7 @@
                       data-bs-target="#motivationLetterModal">
                 <span v-if="applying" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                 <i v-else class="fas fa-paper-plane me-2"></i>
-                {{ applying ? 'Envoi de la candidature...' : (hasApplied ? 'Déjà postulé' : 'Envoyer candidature') }}
+                {{ applying ? 'Envoi de la candidature...' : (hasApplied ? 'Déjà postulé' : 'Postuler') }}
               </button>
               <button v-else-if="userIsStudent && getDisplayStatus(offreDetails.statut, offreDetails.date_expiration) === 'Expirée'"
                       class="btn btn-secondary btn-lg" disabled>

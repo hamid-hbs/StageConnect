@@ -59,7 +59,7 @@
             <li><i class="fas fa-map-marker-alt me-2 text-secondary"></i> {{ offer.ville ? offer.ville.nom_ville : offer.adresse }}</li>
             <li><i class="fas fa-calendar-alt me-2 text-secondary"></i> {{ offer.duree_en_semaines }} semaines</li>
           </ul>
-          <router-link :to="{ name: 'etudiant-offre-details', params: { id: offer.id } }" class="btn btn-outline-primary btn-sm">Postuler</router-link>
+          <router-link :to="{ name: 'etudiant-offre-details', params: { id: offer.id } }" class="btn btn-outline-primary btn-sm">Détails</router-link>
         </div>
       </div>
     </div>
