@@ -6,6 +6,7 @@ import CompleteProfile from '../components/CompleteProfile.vue';
 import SelectRole from '../components/SelectRole.vue';
 import AccueilUser from '../components/AccueilUser.vue';
 import OffreDetails from '../components/OffreDetails.vue';
+import OffreOff from '../components/OffreOff.vue';
 //import ConversationDetail from '../components/ConversationDetail.vue';
 import ConversationsList from '../components/ConversationsList.vue';
 
@@ -63,6 +64,7 @@ const routes = [
   { path: '/select-role', component: SelectRole },
   { path: '/complete-profile/:role', component: CompleteProfile },
   { path: '/accueil-user', component: AccueilUser },
+  { path: '/offre-off/:id', component: OffreOff, name: 'offre-off', props: true},
   //{ path: '/communaute', component: Communaute, name: 'communaute' },
  
 

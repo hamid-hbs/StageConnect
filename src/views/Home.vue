@@ -189,8 +189,9 @@
                 <li><i class="fas fa-map-marker-alt me-2 text-secondary"></i> {{ offer.ville ? offer.ville.nom_ville : offer.adresse }}</li>
                 <li><i class="fas fa-calendar-alt me-2 text-secondary"></i> {{ offer.duree_en_semaines }} semaines</li>
               </ul>
-              <button v-if="!isAuthenticated" @click="showAuthRequiredToast" class="btn btn-outline-primary btn-sm">Postuler</button>
-              <router-link v-else :to="{ name: 'etudiant-offre-details', params: { id: offer.id } }" class="btn btn-outline-primary btn-sm">Postuler</router-link>
+              
+              <router-link :to="{ name: 'offre-off', params: { id: offer.id } }"><button v-if="!isAuthenticated" class="btn btn-outline-primary btn-sm">Voir détails</button></router-link>
+            
             </div>
           </div>
         </div>
