@@ -44,14 +44,14 @@
       <div class="container">
         <div class="row align-items-center">
           <div class="col-md-6 text-center text-md-start">
-            <h2 class="fw-bold mb-3">Une plateforme, deux communautés</h2>
+            <h2 class="fw-bold mb-3">Trouvez le stage <span class="text-primary">parfait</span> pour votre parcours</h2>
             <p class="text-muted fs-5">
-              Connecte étudiants et entreprises pour une meilleure expérience
+              Connectez-vous avec les meilleures entreprises et trouvez des opportunités qui correspondent à vos compétences et aspirations.
             </p>
             <img
               src="/Task.gif"
               alt="Illustration plateforme"
-              class="img-fluid mt-3"
+              class="img-fluid mt-3 px-5"
               style="max-height: 200px;"
             />
           </div>
@@ -149,7 +149,7 @@
           </div>
 
           <div class="col-md-6 mb-4">
-            <h5>Notre mission ⏳</h5>
+            <h5>Notre mission 🎯</h5>
             <p>
               Faciliter la mise en relation entre étudiants et entreprises, 
               tout en assurant un suivi rigoureux et centralisé des stages.
@@ -186,7 +186,7 @@
           <h5 class="text-uppercase">
             <img src="/toge.png" alt="Logo" height="30"> StageConnect
           </h5>
-          <p>Connecte étudiants et entreprises.</p>
+          <p>Connecte étudiants et entreprises pour une meilleure expérience de stage.</p>
         </div>
 
         <div class="col-md-4 mb-3">
