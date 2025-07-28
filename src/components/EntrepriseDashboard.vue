@@ -64,7 +64,11 @@
     <div v-else class="blank-page">
       <div class="message-container">
         <h2 class="message-title">Votre compte est désactivé</h2>
-        <p class="message-text">Pour plus d'informations, veuillez contacter l'administrateur.</p>
+        <p class="message-text">
+          Pour plus d'informations, veuillez contacter l'administrateur au : 
+  <h5>0191863975</h5> ou à cette adresse : 
+  <h5>hamidbawasacca@gmail.com</h5>
+        </p>
         <button class="btn btn-primary mt-3" @click="signOut">Se déconnecter</button>
       </div>
     </div>
