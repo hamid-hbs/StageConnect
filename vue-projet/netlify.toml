@@ -1,0 +1,5 @@
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false # Optionnel, mais bonne pratique. 'true' forcerait la redirection même si un fichier existe.
